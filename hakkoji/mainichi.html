@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>毎日クーポン発行侍</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <base target="_top">
+  <style>
+    /* ▼ 全体レイアウト ▼ */
+    body {
+      background: #f0f4f8;
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+    /* ▼ ページ見出し＋バナー ▼ */
+    .form-header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .form-header h1 {
+      font-size: 1.8em;
+      color: #333;
+      margin: 0;
+    }
+    .title-image {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      object-fit: cover;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    /* ▼ フォーム全体コンテナ ▼ */
+    .form-container {
+      background: #fff;
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .form-group {
+      display: flex;
+      align-items: flex-start;
+      margin-bottom: 15px;
+      background-color: #f2f2f2;
+      padding: 10px;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+    }
+    .form-group label {
+      width: 160px;
+      margin-right: 10px;
+      font-size: 0.85em;
+      color: #333;
+    }
+    .form-group input[type="text"],
+    .form-group input[type="password"],
+    .form-group select,
+    .form-group textarea {
+      flex: 1;
+      padding: 8px 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    /* ▼ ボタン類 ▼ */
+    #btnLoad,
+    .submit-button {
+      display: block;
+      width: 100%;
+      padding: 12px;
+      margin: 20px auto 0;
+      font-size: 1.1em;
+      color: #fff;
+      background-color: #28aadb;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      text-align: center;
+    }
+    #btnLoad:hover,
+    .submit-button:hover { background-color: #1b7fae; }
+    .submit-button { background-color: #0073aa; }
+    .submit-button:hover { background-color: #005a87; }
+    .submit-button:disabled { background-color: #aaa; cursor:not-allowed; }
+    /* ▼ 補足説明 ▼ */
+    .note {
+      font-size: 0.85em;
+      color: #666;
+      margin-top: 8px;
+      padding: 8px;
+      border-left: 3px solid #0073aa;
+      background-color: #f9f9f9;
+      line-height: 1.4;
+    }
+    #message { margin-top:15px; text-align:center; font-size:1em; color:#27ae60; }
+    .error { color:red; }
+    /* ▼ 設定一覧テーブル ▼ */
+    #allSettingsContainer table {
+      width:100%; border-collapse:collapse; margin:15px 0;
+    }
+    #allSettingsContainer th,
+    #allSettingsContainer td {
+      border:1px solid #ccc; padding:6px; text-align:center;
+    }
+    /* ▼ ラジオ横並び etc. ▼ */
+    .discount-options { display:flex; gap:10px; }
+    .discount-options label { display:inline-flex; align-items:center; cursor:pointer; }
+    .discount-options input[type="radio"] { margin-right:4px; }
+  </style>
+</head>
+<body>
+
+  <!-- ▼ タイトル＋バナー ▼ -->
+  <div class="form-header">
+    <h1>毎日クーポン発行侍</h1>
+    <img src="" alt="Banner" class="title-image">
+  </div>
+
+  <div class="form-container">
+    <!-- 認証＋設定No選択 -->
+    <div class="form-group">
+      <label for="userId">ID:</label>
+      <input type="text" id="userId" placeholder="ユーザーID">
+    </div>
+    <div class="form-group">
+      <label for="password">パスワード:</label>
+      <input type="password" id="password" placeholder="パスワード">
+    </div>
+    <button type="button" id="btnLoad">現在の設定を読み込む</button>
+<br>
+    <div class="form-group">
+      <label for="settingIndex">設定No:</label>
+      <select id="settingIndex"></select>
+    </div>
+
+    <div id="remainingIssues" class="note" style="text-align:center;font-weight:bold;"></div>
+    <div id="message"></div>
+
+    <!-- 全スロット一覧テーブル -->
+    <div id="allSettingsContainer"></div>
+
+    <!-- ▼ クーポン登録フォーム ▼ -->
+    <form id="loginForm" onsubmit="handleLogin(event)">
+      <!-- 割引プラン -->
+      <div class="form-group">
+        <label>割引プラン</label>
+        <div class="discount-options">
+          <label><input type="radio" name="discountType" value="1" checked>定額値引き</label>
+          <label><input type="radio" name="discountType" value="2">定率値引き</label>
+          <label><input type="radio" name="discountType" value="4">送料無料</label>
+        </div>
+      </div>
+      <!-- 割引候補 -->
+      <div class="form-group">
+        <label for="discountValues">割引候補:</label>
+        <input type="text" id="discountValues" placeholder="例: 1000,1500,2000 or 10,15,20">
+      </div>
+      <!-- 有効期間 -->
+      <div class="form-group">
+        <label>有効期間</label>
+        <div class="input-and-note">
+          <div>開始：<select id="startHour"></select>時<select id="startMinute"></select>分 00秒</div>
+          <div style="margin-top:8px;">終了：<select id="endHour"></select>時<select id="endMinute"></select>分 59秒</div>
+        </div>
+      </div>
+      <!-- 回数上限 -->
+      <div class="form-group">
+        <label for="issueCount">利用回数上限</label>
+        <div class="input-and-note">
+          <input type="text" id="issueCount" value="0" pattern="\d+">
+          <p class="note">最大桁数：6 数字のみ ※0で無制限</p>
+        </div>
+      </div>
+      <!-- 1ユーザ上限 -->
+      <div class="form-group">
+        <label for="memberAvailMaxCount">1ユーザあたり上限</label>
+        <div class="input-and-note">
+          <input type="text" id="memberAvailMaxCount" value="1" pattern="\d+">
+          <p class="note">※0で無制限</p>
+        </div>
+      </div>
+      <!-- 併用可否 -->
+      <div class="form-group">
+        <label>併用可否</label>
+        <div class="discount-options">
+          <label><input type="radio" name="combineFlag" value="1" checked>併用可</label>
+          <label><input type="radio" name="combineFlag" value="0">併用不可</label>
+        </div>
+      </div>
+      <!-- 条件 -->
+      <div class="form-group">
+        <label>金額・個数条件</label>
+        <div class="input-and-note">
+          <div class="discount-options">
+            <label><input type="radio" name="conditionTypeCode" value="RS003" id="conditionAmount">金額条件</label>
+            <label><input type="radio" name="conditionTypeCode" value="RS004" id="conditionQuantity">個数条件</label>
+            <label><input type="radio" name="conditionTypeCode" value="" id="conditionNone" checked>指定しない</label>
+          </div>
+          <div style="margin-top:8px;">
+            <input type="text" id="startValue" disabled style="width:35%;" placeholder="例: 1000">
+            <span id="conditionLabel"></span>
+          </div>
+        </div>
+      </div>
+      <!-- 対象商品 -->
+      <div class="form-group">
+        <label for="itemCodeList">対象商品リスト</label>
+        <div class="input-and-note">
+          <textarea id="itemCodeList" rows="3" style="width:100%;resize:vertical;"></textarea>
+          <p class="note">改行 or カンマ区切りで入力</p>
+        </div>
+      </div>
+      <!-- 登録ボタン -->
+      <button type="submit" class="submit-button">自動クーポン発行を登録</button>
+      <!-- CSV発行ボタン（既存の発行ボタンの下） -->
+      <button type="button" class="submit-button" style="margin-top:8px; background-color:#e67e22;" onclick="openCsvModal()">CSVで即時発行</button>
+    </form>
+
+    <!-- 更新履歴 -->
+    <div class="history-container" style="margin-top:30px;">
+      <h2 style="font-size:1.2em;color:#333;">更新履歴</h2>
+      <div id="history"></div>
+    </div>
+  </div>
+
+  <script>
+    // ─────────────────────────────────────────
+    // バナー画像をランダムに切り替え
+    // ─────────────────────────────────────────
+    const bannerUrls = [
+      "https://www.tokyoflower.jp/wp-content/uploads/2025/03/eb0e620a54c480f95f0390febde44bf1.jpg",
+      "https://www.tokyoflower.jp/wp-content/uploads/2025/03/63a629bef019488af92dc7cd0f1b7ae5.jpg",
+      "https://www.tokyoflower.jp/wp-content/uploads/2025/03/5f394a922ba2e988c547b8b01769dc20.jpg",
+      "https://www.tokyoflower.jp/wp-content/uploads/2025/03/d2fac96084109f6e30f30299246d39ca.jpg"
+    ];
+
+    // ── グローバル変数 ──
+    let existingSlots = [];  // サーバから返る既存 slot の配列
+
+    // ─── ヘルパー関数 ───
+    function updateConditionInput(){
+      const a = document.getElementById('conditionAmount'),
+            q = document.getElementById('conditionQuantity'),
+            sv = document.getElementById('startValue'),
+            lbl = document.getElementById('conditionLabel');
+      if(a.checked){
+        sv.disabled = false;
+        sv.placeholder = "例: 1000";
+        lbl.textContent = "円以上購入で適用";
+      } else if(q.checked){
+        sv.disabled = false;
+        sv.placeholder = "例: 3";
+        lbl.textContent = "個以上購入で適用";
+      } else {
+        sv.disabled = true;
+        sv.value = "";
+        lbl.textContent = "";
+      }
+    }
+
+    // ページ読み込み時に初回実行
+    updateConditionInput();
+    // ラジオボタンを操作したときにも実行
+    document.querySelectorAll('input[name="conditionTypeCode"]')
+      .forEach(radio => radio.addEventListener('change', updateConditionInput));
+
+    function validatePeriod(){
+      const dt = document.querySelector('input[name="discountType"]:checked').value;
+      const sh = +document.getElementById('startHour').value,
+            sm = +document.getElementById('startMinute').value,
+            eh = +document.getElementById('endHour').value,
+            em = +document.getElementById('endMinute').value;
+      let now=new Date(),
+          start=new Date(now.getFullYear(),now.getMonth(),now.getDate(),sh,sm),
+          end= new Date(now.getFullYear(),now.getMonth(),now.getDate(),eh,em);
+      if(end<=start) end.setDate(end.getDate()+1);
+      if(dt==="4" && ((end-start)/(1000*60*60))>12){
+        document.getElementById('message').innerHTML="<span class='error'>送料無料の有効期間は最大12時間までです。</span>";
+        return false;
+      }
+      return true;
+    }
+
+    function handleLogin(e){
+      e.preventDefault();
+      if(!validatePeriod()) return;
+      // overwrite 確認
+      const slot = document.getElementById('settingIndex').value;
+      if(existingSlots.includes(Number(slot))){
+        if(!confirm("既にあるクーポン設定を上書きしようとしています。\nよろしいですか？")) return;
+      }
+      // 商品リスト整形
+      let raw=document.getElementById('itemCodeList').value.trim(),
+          parts= raw? raw.split(/[\s,]+/).filter(s=>s):[];
+      if(parts.some(c=>!/^[A-Za-z0-9\-_]+$/.test(c))){
+        alert("商品IDは半角英数・_-のみです"); return;
+      }
+      document.getElementById('itemCodeList').value = parts.join(',');
+      // 送信
+      document.getElementById('message').textContent="認証中…";
+      google.script.run
+        .withSuccessHandler(r=>document.getElementById('message').innerHTML=r)
+        .withFailureHandler(err=>document.getElementById('message').innerHTML="<span class='error'>"+err.message+"</span>")
+        .loginAndUpdateUser(
+          document.getElementById('userId').value.trim(),
+          document.getElementById('password').value.trim(),
+          document.getElementById('discountValues').value.trim(),
+          document.querySelector('input[name="discountType"]:checked').value,
+          document.getElementById('issueCount').value.trim(),
+          document.getElementById('memberAvailMaxCount').value.trim(),
+          document.querySelector('input[name="combineFlag"]:checked').value,
+          document.querySelector('input[name="conditionTypeCode"]:checked').value,
+          document.getElementById('startValue').value.trim(),
+          document.getElementById('startHour').value,
+          document.getElementById('startMinute').value,
+          document.getElementById('endHour').value,
+          document.getElementById('endMinute').value,
+          document.getElementById('itemCodeList').value,
+          document.getElementById('settingIndex').value  // slot
+        );
+    }
+
+    function renderSettingsList(list){
+      const msg = document.getElementById('message'),
+            sel = document.getElementById('settingIndex'),
+            cont= document.getElementById('allSettingsContainer');
+      if(typeof list==='string'){
+        msg.innerHTML="<span class='error'>"+list+"</span>"; return;
+      }
+      existingSlots = list.map(o=>o.slot);
+      // ドロップダウン 1～20
+      sel.innerHTML = "";
+      for(let i=1;i<=20;i++){
+        const has = existingSlots.includes(i);
+        sel.insertAdjacentHTML('beforeend',
+          `<option value="${i}">設定No ${i} ${has? "":"(未設定)"}</option>`);
+      }
+      // テーブルは既存だけ表示
+      let html = "<table><thead><tr><th>No</th><th>プラン</th><th>候補</th><th>時刻</th></tr></thead><tbody>";
+      list.forEach(s=>{
+        const plan = s.discountType==="1"?"定額": s.discountType==="2"? "定率":"送料無料";
+        html += `<tr>
+          <td>${s.slot}</td><td>${plan}</td>
+          <td>${s.discountValues}</td>
+          <td>${s.startHour}:${s.startMinute} → ${s.endHour}:${s.endMinute}</td>
+        </tr>`;
+      });
+      html += "</tbody></table>";
+      cont.innerHTML = html;
+      msg.textContent = "";
+      loadSingleSetting();
+    }
+
+    function loadSingleSetting(){
+      const uid = document.getElementById('userId').value.trim(),
+            pw  = document.getElementById('password').value.trim(),
+            slot= document.getElementById('settingIndex').value;
+      document.getElementById('message').textContent = "設定を読み込み中…";
+      google.script.run
+        .withSuccessHandler(renderForm)
+        .withFailureHandler(err=>document.getElementById('message').innerHTML="<span class='error'>"+err.message+"</span>")
+        .getUserSettings(uid,pw,slot);
+    }
+
+    function renderForm(res){
+      if(typeof res==='string'){
+        // 設定なし→フォームをクリア
+        document.getElementById('message').innerHTML = `<span class='error'>${res}</span>`;
+        document.getElementById('remainingIssues').textContent="";
+        document.getElementById('discountValues').value="";
+        document.getElementById('issueCount').value="0";
+        document.getElementById('memberAvailMaxCount').value="1";
+        document.querySelector(`input[name="combineFlag"][value="1"]`).checked=true;
+        document.querySelector(`input[name="conditionTypeCode"][value=""]`).checked=true;
+        document.getElementById('startValue').value="";
+        document.getElementById('startHour').value="00";
+        document.getElementById('startMinute').value="00";
+        document.getElementById('endHour').value="23";
+        document.getElementById('endMinute').value="59";
+        document.getElementById('itemCodeList').value="";
+        return;
+      }
+      // 既存設定 → フォームに埋め
+//      document.getElementById('remainingIssues').textContent = "残り発行可能回数："+res.remainingCount;
+
+      // ここを修正：残数＋GSDコイン＋→クーポン発行xx回分
+      const rem = res.remainingCount;
+      const coin = res.download;
+      const potential = coin * 2;
+      document.getElementById('remainingIssues').textContent =
+        `残り発行可能回数：${rem}　GSDコイン：${coin}　→ クーポン発行${potential}回分`;
+
+      document.querySelector(`input[name="discountType"][value="${res.discountType}"]`).checked=true;
+      updateConditionInput();
+      document.getElementById('discountValues').value=res.discountValues;
+      document.getElementById('issueCount').value=res.issueCount;
+      document.getElementById('memberAvailMaxCount').value=res.memberAvailMaxCount;
+      document.querySelector(`input[name="combineFlag"][value="${res.combineFlag}"]`).checked=true;
+      document.querySelector(`input[name="conditionTypeCode"][value="${res.conditionTypeCode}"]`).checked=true;
+      document.getElementById('startValue').value=res.startValue;
+      document.getElementById('startHour').value=res.startHour;
+      document.getElementById('startMinute').value=res.startMinute;
+      document.getElementById('endHour').value=res.endHour;
+      document.getElementById('endMinute').value=res.endMinute;
+      document.getElementById('itemCodeList').value=res.itemCodeList;
+      document.getElementById('message').textContent="現在の設定を読み込みました。";
+    }
+
+    function loadHistory(){
+      google.script.run
+        .withSuccessHandler(html=>document.getElementById('history').innerHTML=html)
+        .withFailureHandler(err=>document.getElementById('history').innerHTML="<span class='error'>"+err.message+"</span>")
+        .getHistory();
+    }
+
+    // ─── 初期化 ───
+    document.addEventListener("DOMContentLoaded",()=>{
+      // バナー
+      document.querySelector(".title-image").src = bannerUrls[Math.floor(Math.random()*bannerUrls.length)];
+      // 時間セレクト
+      for(let h=0;h<24;h++){
+        const hh=('0'+h).slice(-2);
+        document.getElementById('startHour').insertAdjacentHTML('beforeend',`<option>${hh}</option>`);
+        document.getElementById('endHour').insertAdjacentHTML('beforeend',`<option>${hh}</option>`);
+      }
+      for(let m=0;m<60;m++){
+        const mm=('0'+m).slice(-2);
+        document.getElementById('startMinute').insertAdjacentHTML('beforeend',`<option>${mm}</option>`);
+        document.getElementById('endMinute').insertAdjacentHTML('beforeend',`<option>${mm}</option>`);
+      }
+      updateConditionInput();
+      // ボタン／セレクト
+      document.getElementById('btnLoad').addEventListener('click',()=>{
+        const uid=document.getElementById('userId').value.trim(),
+              pw=document.getElementById('password').value.trim();
+        if(!uid||!pw){
+          document.getElementById('message').innerHTML="<span class='error'>IDとパスワードを入力してください。</span>";
+          return;
+        }
+        document.getElementById('message').textContent="一覧を取得中…";
+        google.script.run
+          .withSuccessHandler(renderSettingsList)
+          .withFailureHandler(err=>document.getElementById('message').innerHTML="<span class='error'>"+err.message+"</span>")
+          .getUserSettingsList(uid,pw);
+      });
+      document.getElementById('settingIndex').addEventListener('change', loadSingleSetting);
+      loadHistory();
+    });
+
+
+    // ===== CSV即時発行 =====
+    var _csvRows = [];
+
+    function openCsvModal() {
+      _csvRows = [];
+      document.getElementById('csvFileInput').value = '';
+      document.getElementById('csvPreview').innerHTML = '';
+      document.getElementById('csvResult').innerHTML = '';
+      document.getElementById('csvIssueBtn').disabled = true;
+      document.getElementById('csvModal').style.display = 'block';
+    }
+    function closeCsvModal() {
+      document.getElementById('csvModal').style.display = 'none';
+    }
+
+    function dlCsvTemplate() {
+      var bom  = '﻿';
+      var head = 'discountValues,discountType,couponStartDate,slot,issueCount,memberAvailMaxCount,combineFlag,startHour,startMinute,endHour,endMinute,conditionTypeCode,startValue,itemCodeList\n';
+      var samp = '"10,15,20",1,2025-07-01,1,0,0,0,0,0,23,59,,,\n';
+      var blob = new Blob([bom + head + samp], { type: 'text/csv;charset=utf-8;' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = 'hakkoji_csv_template.csv';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    }
+
+    function onCsvFile(input) {
+      var f = input.files && input.files[0]; if (!f) return;
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        _csvRows = parseCsv_(decodeBuf_(e.target.result));
+        renderPreview_(_csvRows);
+      };
+      reader.readAsArrayBuffer(f);
+    }
+
+    function decodeBuf_(buf) {
+      var bytes = new Uint8Array(buf);
+      var utf8  = new TextDecoder('utf-8').decode(bytes);
+      if ((utf8.match(/�/g) || []).length > 2) {
+        try { return new TextDecoder('shift_jis').decode(bytes); } catch(e) {}
+      }
+      return utf8;
+    }
+
+    function parseCsv_(text) {
+      text = text.replace(/^﻿/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+      var lines = text.split('\n').filter(function(l){ return l.trim() !== ''; });
+      if (!lines.length) return [];
+      var headers = splitLine_(lines[0]).map(function(h){ return h.trim(); });
+      return lines.slice(1).map(function(line) {
+        var cols = splitLine_(line), obj = {};
+        headers.forEach(function(h, i){ obj[h] = (cols[i] || '').trim(); });
+        return obj;
+      });
+    }
+
+    function splitLine_(line) {
+      var out = [], cur = '', q = false;
+      for (var i = 0; i < line.length; i++) {
+        var c = line[i];
+        if (q) { if (c==='"'){ if(line[i+1]==='"'){cur+='"';i++;}else q=false; } else cur+=c; }
+        else   { if (c==='"') q=true; else if(c===','){out.push(cur);cur='';} else cur+=c; }
+      }
+      out.push(cur); return out;
+    }
+
+    function renderPreview_(rows) {
+      var el = document.getElementById('csvPreview');
+      if (!rows.length) { el.innerHTML = '<p style="color:red">有効な行がありません</p>'; return; }
+      var ok = 0;
+      var html = '<table border="1" cellpadding="4" style="font-size:12px;border-collapse:collapse;width:100%">'
+        + '<tr><th>#</th><th>値引き</th><th>type</th><th>発行日</th><th>slot</th><th>商品</th><th>判定</th></tr>';
+      rows.forEach(function(r, i) {
+        var valid = r.discountValues && r.discountType && r.couponStartDate;
+        if (valid) ok++;
+        html += '<tr><td>'+(i+1)+'</td><td>'+esc_(r.discountValues||'')+'</td><td>'+esc_(r.discountType||'')
+          +'</td><td>'+esc_(r.couponStartDate||'')+'</td><td>'+(r.slot||1)+'</td><td>'+(r.itemCodeList?'指定':'全品')
+          +'</td><td style="color:'+(valid?'green':'red')+'">'+(valid?'OK':'NG')+'</td></tr>';
+      });
+      html += '</table><p>発行可能: <strong>'+ok+'</strong> / NG: '+(rows.length-ok)+'</p>';
+      if (rows.length > 20) html += '<p style="color:red">20件超のためエラーになります。分割してください。</p>';
+      el.innerHTML = html;
+      document.getElementById('csvIssueBtn').disabled = (ok === 0);
+    }
+
+    function esc_(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    function execCsvIssue() {
+      var validRows = _csvRows.filter(function(r){ return r.discountValues && r.discountType && r.couponStartDate; });
+      if (!validRows.length) { alert('有効な行がありません'); return; }
+      if (!confirm(validRows.length + '件を楽天クーポンとして即時発行します。よろしいですか？')) return;
+
+      var btn = document.getElementById('csvIssueBtn');
+      btn.disabled = true; btn.textContent = '発行中...';
+      document.getElementById('csvResult').innerHTML = '<p>発行中... しばらくお待ちください</p>';
+
+      // ★ Step 3: mainichi.html はDOM要素から直接取得（JS変数には保存していない）
+      var uid = document.getElementById('userId').value.trim();
+      var pw  = document.getElementById('password').value.trim();
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          btn.disabled = false; btn.textContent = '発行する';
+          renderResult_(res);
+        })
+        .withFailureHandler(function(err) {
+          btn.disabled = false; btn.textContent = '発行する';
+          document.getElementById('csvResult').innerHTML = '<p style="color:red">エラー: ' + err.message + '</p>';
+        })
+        .issueFromSettingCsv(uid, pw, validRows);
+    }
+
+    function renderResult_(res) {
+      var el = document.getElementById('csvResult');
+      if (!res.success) { el.innerHTML = '<p style="color:red">失敗: ' + esc_(res.error||'') + '</p>'; return; }
+      var d = res.data;
+      var html = '<p><strong>発行完了: ' + d.issued + ' / ' + d.total + ' 件</strong></p>'
+        + '<table border="1" cellpadding="4" style="font-size:12px;border-collapse:collapse;width:100%">'
+        + '<tr><th>#</th><th>状態</th><th>クーポン名</th><th>開始</th><th>終了</th><th>メッセージ</th></tr>';
+      (d.results || []).forEach(function(r) {
+        var color = r.status === 'issued' ? 'green' : 'red';
+        html += '<tr><td>'+r.row+'</td><td style="color:'+color+'">'+r.status+'</td>'
+          + '<td>'+esc_(r.couponName||'')+'</td><td>'+esc_(r.couponStart||'')+'</td>'
+          + '<td>'+esc_(r.couponEnd||'')+'</td><td>'+esc_(r.message||'')+'</td></tr>';
+      });
+      el.innerHTML = html + '</table>';
+    }
+
+  </script>
+
+<!-- CSV即時発行モーダル -->
+<div id="csvModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+     background:rgba(0,0,0,0.5); z-index:9999; overflow-y:auto;">
+  <div style="background:#fff; max-width:700px; margin:40px auto; padding:24px; border-radius:8px;">
+    <h3>CSVで即時発行（setting準拠）</h3>
+    <p style="font-size:13px; color:#555;">
+      ※ クーポン終了日は <strong>couponStartDate 当日の endHour:endMinute</strong> になります（別日終了は現行システム非対応）<br>
+      ※ 1回20件まで。discountValues はカンマ区切り（例: <code>10,15,20</code>）
+    </p>
+    <p><a href="javascript:void(0)" onclick="dlCsvTemplate()">▼ テンプレートCSVをダウンロード</a></p>
+    <div style="margin:12px 0;">
+      <input type="file" accept=".csv" id="csvFileInput" onchange="onCsvFile(this)">
+    </div>
+    <div id="csvPreview" style="max-height:320px; overflow-y:auto; margin:12px 0;"></div>
+    <div style="display:flex; gap:8px;">
+      <button id="csvIssueBtn" onclick="execCsvIssue()" disabled style="padding:10px 20px; background:#e67e22; color:#fff; border:none; border-radius:4px; cursor:pointer;">発行する</button>
+      <button onclick="closeCsvModal()" style="padding:10px 20px; border:1px solid #ccc; border-radius:4px; cursor:pointer;">キャンセル</button>
+    </div>
+    <div id="csvResult" style="margin-top:12px;"></div>
+  </div>
+</div>
+
+</body>
+</html>
