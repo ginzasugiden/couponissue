@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>送料無料クーポン発行フォーム</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { background: #f0f4f8; font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+    .form-container {
+      background: #fff; max-width: 600px; margin: 0 auto;
+      padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .form-group { margin-bottom: 15px; }
+    label { display: block; font-size: 0.9em; color: #333; margin-bottom: 5px; }
+    input[type="text"], input[type="number"], input[type="datetime-local"], input[type="password"] {
+      width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;
+    }
+    .radio-group { display: flex; gap: 20px; }
+    .submit-button {
+      display: block; width: 100%; padding: 12px; font-size: 1.1em;
+      background-color: #0073aa; color: #fff; border: none; border-radius: 5px;
+      cursor: pointer; margin-top: 20px;
+    }
+    .submit-button:hover { background-color: #005a87; }
+    #message { margin-top: 15px; text-align: center; font-size: 1em; color: green; }
+    .error { color: red; }
+    #authSection { border: 1px solid #ddd; border-radius: 4px; padding: 12px; margin-bottom: 20px; background: #f9f9f9; }
+    #authSection h3 { margin-top: 0; font-size: 1em; color: #333; }
+  </style>
+</head>
+<body>
+  <div class="form-container">
+    <div style="text-align:center; margin-bottom:20px;">
+      <h1 style="font-size:1.4em; color:#333;">送料無料クーポン発行フォーム</h1>
+    </div>
+
+    <!-- 認証セクション（静的版で追加） -->
+    <div id="authSection">
+      <h3>ログイン</h3>
+      <div class="form-group">
+        <label for="userId">ユーザーID</label>
+        <input type="text" id="userId" placeholder="ユーザーID">
+      </div>
+      <div class="form-group">
+        <label for="password">パスワード</label>
+        <input type="password" id="password" placeholder="パスワード">
+      </div>
+    </div>
+
+    <form id="shippingCouponForm" onsubmit="handleShippingCoupon(event)">
+      <div class="form-group">
+        <label for="couponStartDate">クーポン開始日時</label>
+        <input type="datetime-local" id="couponStartDate" name="couponStartDate" required>
+      </div>
+      <div class="form-group">
+        <label for="couponEndDate">クーポン終了日時</label>
+        <input type="datetime-local" id="couponEndDate" name="couponEndDate" required>
+      </div>
+      <div class="form-group">
+        <label for="issueCount">利用回数上限 <small>(0の場合は無制限)</small></label>
+        <input type="number" id="issueCount" name="issueCount" min="0" required>
+      </div>
+      <div class="form-group">
+        <label for="memberAvailMaxCount">1ユーザーあたりの利用回数上限 <small>(0の場合は無制限)</small></label>
+        <input type="number" id="memberAvailMaxCount" name="memberAvailMaxCount" min="0" required>
+      </div>
+      <div class="form-group">
+        <label>クーポンの併用可否</label>
+        <div class="radio-group">
+          <label><input type="radio" name="combineFlag" value="1" checked> 併用可</label>
+          <label><input type="radio" name="combineFlag" value="0"> 併用不可</label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="couponImage">クーポン画像URL (任意)</label>
+        <input type="text" id="couponImage" name="couponImage" placeholder="https://image.example.com/path/to/image.jpg">
+      </div>
+      <button type="submit" class="submit-button">送料無料クーポン発行を登録</button>
+    </form>
+
+    <div id="message"></div>
+  </div>
+
+  <script src="assets/config.js"></script>
+  <script src="assets/api.js"></script>
+  <script>
+    async function handleShippingCoupon(e) {
+      e.preventDefault();
+      const msgEl = document.getElementById('message');
+      msgEl.textContent = "処理中…";
+
+      const uid = document.getElementById('userId').value.trim();
+      const pw  = document.getElementById('password').value.trim();
+      if (!uid || !pw) {
+        msgEl.innerHTML = "<span class='error'>ユーザーIDとパスワードを入力してください。</span>";
+        return;
+      }
+      // sessionStorage に保存してから callApi（callApi が auth を自動付与）
+      sessionStorage.setItem('auth', JSON.stringify({ userId: uid, pw }));
+
+      const couponStartDate     = document.getElementById('couponStartDate').value;
+      const couponEndDate       = document.getElementById('couponEndDate').value;
+      const issueCount          = document.getElementById('issueCount').value;
+      const memberAvailMaxCount = document.getElementById('memberAvailMaxCount').value;
+      const combineFlag         = document.querySelector('input[name="combineFlag"]:checked').value;
+      const couponImage         = document.getElementById('couponImage').value.trim();
+
+      try {
+        const response = await callApi('shippingCouponIssue', {
+          couponStartDate, couponEndDate,
+          issueCount, memberAvailMaxCount,
+          combineFlag, couponImage,
+          discountType:   "4",
+          discountFactor: "1",
+          itemType:       "5"
+        });
+        msgEl.textContent = response;
+      } catch (err) {
+        msgEl.innerHTML = `<span class='error'>エラー: ${err.message}</span>`;
+      }
+    }
+  </script>
+</body>
+</html>

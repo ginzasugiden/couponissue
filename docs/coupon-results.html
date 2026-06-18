@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>有効なクーポン検索結果</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    h1 { font-size: 1.4em; color: #333; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; font-size: 0.9em; }
+    th { background-color: #f0f0f0; }
+    #authSection { border: 1px solid #ddd; border-radius: 4px; padding: 12px; margin-bottom: 20px;
+                   background: #f9f9f9; max-width: 400px; }
+    #authSection h3 { margin-top: 0; font-size: 1em; }
+    .form-group { margin-bottom: 10px; }
+    .form-group label { display: block; font-size: 0.9em; margin-bottom: 4px; }
+    .form-group input { width: 100%; padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+    button { padding: 8px 16px; background: #0073aa; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+    button:hover { background: #005a87; }
+    #message { margin: 10px 0; color: red; font-size: 0.9em; }
+  </style>
+</head>
+<body>
+  <h1>有効なクーポン検索結果</h1>
+
+  <div id="authSection">
+    <h3>ログイン</h3>
+    <div class="form-group">
+      <label for="userId">ユーザーID</label>
+      <input type="text" id="userId" placeholder="ユーザーID">
+    </div>
+    <div class="form-group">
+      <label for="password">パスワード</label>
+      <input type="password" id="password" placeholder="パスワード">
+    </div>
+    <button onclick="loadCoupons()">読み込む</button>
+    <div id="message"></div>
+  </div>
+
+  <div id="tableContainer"></div>
+
+  <script src="assets/config.js"></script>
+  <script src="assets/api.js"></script>
+  <script>
+    async function loadCoupons() {
+      const uid = document.getElementById('userId').value.trim();
+      const pw  = document.getElementById('password').value.trim();
+      const msgEl = document.getElementById('message');
+      if (!uid || !pw) { msgEl.textContent = "IDとパスワードを入力してください。"; return; }
+      msgEl.textContent = "読み込み中…";
+      sessionStorage.setItem('auth', JSON.stringify({ userId: uid, pw }));
+      try {
+        const data = await callApi('getActiveCoupons');
+        renderTable(data);
+        msgEl.textContent = "";
+      } catch (err) {
+        msgEl.textContent = "エラー: " + err.message;
+      }
+    }
+
+    function renderTable(data) {
+      const el = document.getElementById('tableContainer');
+      if (!data || data.length === 0) { el.innerHTML = '<p>データがありません。</p>'; return; }
+      let html = '<table><thead><tr>';
+      data[0].forEach(h => { html += `<th>${esc(String(h))}</th>`; });
+      html += '</tr></thead><tbody>';
+      data.slice(1).forEach(row => {
+        html += '<tr>';
+        row.forEach(cell => { html += `<td>${esc(String(cell))}</td>`; });
+        html += '</tr>';
+      });
+      html += '</tbody></table>';
+      el.innerHTML = html;
+    }
+
+    function esc(s) {
+      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+  </script>
+</body>
+</html>
