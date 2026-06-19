@@ -399,6 +399,7 @@
       document.getElementById('csvResult').innerHTML = '';
       document.getElementById('csvIssueBtn').disabled = true;
       document.getElementById('csvModal').style.display = 'block';
+      addRow_();
     }
     function closeCsvModal() {
       document.getElementById('csvModal').style.display = 'none';
@@ -559,60 +560,207 @@
       return null;
     }
 
-    function renderPreview_(rows) {
-      const el  = document.getElementById('csvPreview');
-      const pad = n => ('0' + n).slice(-2);
-      if (!rows.length) { el.innerHTML = '<p style="color:red">有効な行がありません</p>'; return; }
+    function renderPreview_() {
+      const el = document.getElementById('csvPreview');
+      if (!_csvRows.length) {
+        el.innerHTML = '<p style="color:#999;font-size:12px;">行が0件です。「＋ 行を追加」から追加してください。</p>';
+        document.getElementById('csvIssueBtn').disabled = true;
+        const countEl = document.getElementById('csvPreviewCount');
+        if (countEl) countEl.textContent = '発行可能: 0 / NG: 0';
+        return;
+      }
       let ok = 0;
-      let html = '<table border="1" cellpadding="4" style="font-size:12px;border-collapse:collapse;width:100%">'
-        + '<tr><th>#</th><th>種別</th><th>値引き額/率</th><th>開始日</th><th>終了日</th><th>開始時刻</th><th>終了時刻</th><th>商品</th><th>クーポン名</th><th>説明文</th><th>公開設定</th><th>画像</th><th>利用条件</th><th>判定</th></tr>';
-      rows.forEach((r, i) => {
+      let html = '<div style="overflow-x:auto"><table border="1" cellpadding="3" style="font-size:11px;border-collapse:collapse;white-space:nowrap">'
+        + '<tr style="background:#f0f0f0"><th>#</th><th>種別</th><th>値引き額/率</th>'
+        + '<th>開始日</th><th>終了日</th><th>開始時刻</th><th>終了時刻</th>'
+        + '<th>クーポン名</th><th>説明文</th><th>公開設定</th><th>画像URL</th>'
+        + '<th>商品コード</th><th>利用条件</th><th>判定</th><th>削除</th></tr>';
+      _csvRows.forEach((r, i) => {
         const err     = validateCsvRowFront_(r);
         const valid   = !err;
         if (valid) ok++;
-        const typeNum = resolveTypeNum_(r.discountType);
-        const fv      = toHankaku_(r.discountFactor || '');
-        const factorCell = typeNum === 4 ? '(自動)'
-                         : typeNum === 2 ? `${fv}%`
-                         : `${fv}円`;
-        const sh = pad(parseInt(toHankaku_(r.startHour)   || '0',  10));
-        const sm = pad(parseInt(toHankaku_(r.startMinute) || '0',  10));
-        const eh = pad(parseInt(toHankaku_(r.endHour)     || '23', 10));
-        const em = pad(parseInt(toHankaku_(r.endMinute)   || '59', 10));
-        const cnDisp  = r.couponName ? esc_(r.couponName) : '<span style="color:#999">自動生成</span>';
-        const capDisp = r.couponCaption ? esc_(r.couponCaption) : '-';
-        const dfDisp  = String(r.displayFlag || '').trim() === '0' ? '限定' : '公開';
-        const imgDisp = r.couponImageUrl ? 'あり' : '-';
-        const ctcVal  = String(r.conditionTypeCode || '').trim();
-        const svVal   = toHankaku_(r.startValue || '');
-        const ctcDisp = ctcVal === '1' ? `金額:${svVal}円以上`
-                      : ctcVal === '2' ? `個数:${svVal}個以上`
-                      : '指定しない';
-        html += `<tr>`
-          + `<td>${i + 1}</td>`
-          + `<td>${discountTypeLabel_(r.discountType)}</td>`
-          + `<td>${esc_(factorCell)}</td>`
-          + `<td>${esc_(r.couponStartDate || '')}</td>`
-          + `<td>${esc_(r.couponEndDate || '(同日)')}</td>`
-          + `<td>${sh}:${sm}</td>`
-          + `<td>${eh}:${em}</td>`
-          + `<td>${r.itemCodeList ? '指定' : '全品'}</td>`
-          + `<td>${cnDisp}</td>`
-          + `<td>${capDisp}</td>`
-          + `<td>${dfDisp}</td>`
-          + `<td>${imgDisp}</td>`
-          + `<td>${ctcDisp}</td>`
-          + `<td style="color:${valid ? 'green' : 'red'}" title="${esc_(err || '')}">${valid ? 'OK' : 'NG: ' + esc_(err || '')}</td>`
+        const typeNum = resolveTypeNum_(r.discountType || '定額');
+        const isFree  = typeNum === 4;
+
+        const typeSel =
+          `<select id="dt_${i}" style="width:70px" onchange="_csvRows[${i}].discountType=this.value;onTypeChange_(${i})">`
+          + ['定額','定率','送料無料'].map(t =>
+              `<option value="${t}"${(r.discountType||'定額')===t?' selected':''}>` + t + '</option>'
+            ).join('')
+          + '</select>';
+
+        const dfUnit = isFree ? '' : typeNum === 2 ? '%' : '円';
+        const dfCell =
+          `<input id="df_${i}" type="text" style="width:50px${isFree?';display:none':''}" maxlength="10"`
+          + ` value="${escAttr_(r.discountFactor||'')}" ${isFree?'disabled':''}`
+          + ` oninput="_csvRows[${i}].discountFactor=this.value;revalidateRow_(${i})">`
+          + `<span id="dfunit_${i}">${dfUnit}</span>`;
+
+        const sdCell =
+          `<input type="text" placeholder="2026/7/1" style="width:76px"`
+          + ` value="${escAttr_(r.couponStartDate||'')}"`
+          + ` oninput="_csvRows[${i}].couponStartDate=this.value;revalidateRow_(${i})">`;
+
+        const edCell =
+          `<input type="text" placeholder="省略=同日" style="width:76px"`
+          + ` value="${escAttr_(r.couponEndDate||'')}"`
+          + ` oninput="_csvRows[${i}].couponEndDate=this.value;revalidateRow_(${i})">`;
+
+        const shSel = makeHourSelect_(r.startHour||'0',     `_csvRows[${i}].startHour=this.value;revalidateRow_(${i})`);
+        const smSel = makeMinuteSelect_(r.startMinute||'0', `_csvRows[${i}].startMinute=this.value;revalidateRow_(${i})`);
+        const ehSel = makeHourSelect_(r.endHour||'23',      `_csvRows[${i}].endHour=this.value;revalidateRow_(${i})`);
+        const emSel = makeMinuteSelect_(r.endMinute||'59',  `_csvRows[${i}].endMinute=this.value;revalidateRow_(${i})`);
+
+        const cnCell =
+          `<input type="text" placeholder="省略=自動生成" style="width:108px" maxlength="30"`
+          + ` value="${escAttr_(r.couponName||'')}"`
+          + ` oninput="_csvRows[${i}].couponName=this.value;revalidateRow_(${i})">`;
+
+        const capCell =
+          `<input type="text" placeholder="-" style="width:108px" maxlength="100"`
+          + ` value="${escAttr_(r.couponCaption||'')}"`
+          + ` oninput="_csvRows[${i}].couponCaption=this.value;revalidateRow_(${i})">`;
+
+        const dfSel =
+          `<select style="width:55px" onchange="_csvRows[${i}].displayFlag=this.value;revalidateRow_(${i})">`
+          + `<option value="1"${(r.displayFlag||'1')==='1'?' selected':''}>公開</option>`
+          + `<option value="0"${r.displayFlag==='0'?' selected':''}>限定</option>`
+          + '</select>';
+
+        const imgCell =
+          `<input type="text" placeholder="https://image.rakuten.co.jp/..." style="width:140px"`
+          + ` value="${escAttr_(r.couponImageUrl||'')}"`
+          + ` oninput="_csvRows[${i}].couponImageUrl=this.value;revalidateRow_(${i})">`;
+
+        const itemCell =
+          `<input type="text" placeholder="全品" style="width:72px"`
+          + ` value="${escAttr_(r.itemCodeList||'')}"`
+          + ` oninput="_csvRows[${i}].itemCodeList=this.value;revalidateRow_(${i})">`;
+
+        const ctcVal  = r.conditionTypeCode || '';
+        const svUnit  = ctcVal==='1' ? '円以上' : ctcVal==='2' ? '個以上' : '';
+        const ctcCell =
+          `<select id="ctc_${i}" style="width:78px" onchange="_csvRows[${i}].conditionTypeCode=this.value;onCondTypeChange_(${i})">`
+          + `<option value=""${ctcVal===''?' selected':''}>指定しない</option>`
+          + `<option value="1"${ctcVal==='1'?' selected':''}>金額条件</option>`
+          + `<option value="2"${ctcVal==='2'?' selected':''}>個数条件</option>`
+          + `</select>`
+          + `<input id="sv_${i}" type="text" placeholder="例:1000" style="width:52px${ctcVal===''?';display:none':''}"`
+          + ` value="${escAttr_(r.startValue||'')}"`
+          + ` oninput="_csvRows[${i}].startValue=this.value;revalidateRow_(${i})">`
+          + `<span id="svunit_${i}">${svUnit}</span>`;
+
+        html +=
+          `<tr>`
+          + `<td style="text-align:center">${i+1}</td>`
+          + `<td>${typeSel}</td>`
+          + `<td>${dfCell}</td>`
+          + `<td>${sdCell}</td>`
+          + `<td>${edCell}</td>`
+          + `<td>${shSel}時${smSel}分</td>`
+          + `<td>${ehSel}時${emSel}分</td>`
+          + `<td>${cnCell}</td>`
+          + `<td>${capCell}</td>`
+          + `<td>${dfSel}</td>`
+          + `<td>${imgCell}</td>`
+          + `<td>${itemCell}</td>`
+          + `<td>${ctcCell}</td>`
+          + `<td id="judgement_${i}" style="color:${valid?'green':'red'}" title="${escAttr_(err||'')}">`
+          + (valid ? 'OK' : 'NG: ' + esc_(err||'')) + '</td>'
+          + `<td style="text-align:center"><button onclick="removeRow_(${i})" style="padding:1px 5px;cursor:pointer">✕</button></td>`
           + `</tr>`;
       });
-      html += `</table><p>発行可能: <strong>${ok}</strong> / NG: ${rows.length - ok}</p>`;
-      if (rows.length > 20) html += '<p style="color:red">20件超のためエラーになります。分割してください。</p>';
+      html += '</table></div>';
+      if (_csvRows.length > 20) html += '<p style="color:red;font-size:12px">20件超のためエラーになります。分割してください。</p>';
       el.innerHTML = html;
-      document.getElementById('csvIssueBtn').disabled = (ok === 0);
+      const countEl = document.getElementById('csvPreviewCount');
+      if (countEl) countEl.textContent = `発行可能: ${ok} / NG: ${_csvRows.length - ok}`;
+      document.getElementById('csvIssueBtn').disabled = (ok === 0 || !_csvRows.length);
     }
 
     function esc_(s) {
       return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function escAttr_(s) {
+      return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function makeHourSelect_(val, onchange) {
+      let html = `<select style="width:46px" onchange="${onchange}">`;
+      for (let h = 0; h < 24; h++) {
+        html += `<option value="${h}"${String(val)===String(h)?' selected':''}>${h}</option>`;
+      }
+      return html + '</select>';
+    }
+
+    function makeMinuteSelect_(val, onchange) {
+      let html = `<select style="width:50px" onchange="${onchange}">`;
+      for (let m = 0; m < 60; m++) {
+        const mm = ('0'+m).slice(-2);
+        html += `<option value="${m}"${String(val)===String(m)?' selected':''}>${mm}</option>`;
+      }
+      return html + '</select>';
+    }
+
+    function addRow_() {
+      _csvRows.push({
+        discountType: '定額', discountFactor: '',
+        couponStartDate: '', couponEndDate: '',
+        startHour: '0', startMinute: '0', endHour: '23', endMinute: '59',
+        issueCount: '0', memberAvailMaxCount: '0', combineFlag: '0',
+        conditionTypeCode: '', startValue: '', itemCodeList: '',
+        couponName: '', couponCaption: '', displayFlag: '1', couponImageUrl: ''
+      });
+      renderPreview_();
+    }
+
+    function removeRow_(i) {
+      _csvRows.splice(i, 1);
+      renderPreview_();
+    }
+
+    function revalidateRow_(i) {
+      const err  = validateCsvRowFront_(_csvRows[i]);
+      const cell = document.getElementById('judgement_' + i);
+      if (cell) {
+        cell.style.color = err ? 'red' : 'green';
+        cell.textContent = err ? 'NG: ' + err : 'OK';
+        cell.title       = err || '';
+      }
+      const allOk = _csvRows.length > 0 && _csvRows.every(r => !validateCsvRowFront_(r));
+      document.getElementById('csvIssueBtn').disabled = !allOk;
+      const countEl = document.getElementById('csvPreviewCount');
+      if (countEl) {
+        const n = _csvRows.filter(r => !validateCsvRowFront_(r)).length;
+        countEl.textContent = `発行可能: ${n} / NG: ${_csvRows.length - n}`;
+      }
+    }
+
+    function onTypeChange_(i) {
+      const typeNum = resolveTypeNum_(_csvRows[i].discountType);
+      const isFree  = typeNum === 4;
+      const dfEl    = document.getElementById('df_' + i);
+      const unitEl  = document.getElementById('dfunit_' + i);
+      if (dfEl) {
+        dfEl.disabled      = isFree;
+        dfEl.style.display = isFree ? 'none' : '';
+        if (isFree) { dfEl.value = ''; _csvRows[i].discountFactor = ''; }
+      }
+      if (unitEl) unitEl.textContent = typeNum===2 ? '%' : isFree ? '' : '円';
+      revalidateRow_(i);
+    }
+
+    function onCondTypeChange_(i) {
+      const ctc    = _csvRows[i].conditionTypeCode;
+      const svEl   = document.getElementById('sv_' + i);
+      const unitEl = document.getElementById('svunit_' + i);
+      if (svEl) {
+        svEl.style.display = ctc !== '' ? '' : 'none';
+        if (ctc === '') { svEl.value = ''; _csvRows[i].startValue = ''; }
+      }
+      if (unitEl) unitEl.textContent = ctc==='1' ? '円以上' : ctc==='2' ? '個以上' : '';
+      revalidateRow_(i);
     }
 
     async function execCsvIssue() {
@@ -652,7 +800,7 @@
   <!-- CSV即時発行モーダル -->
   <div id="csvModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
        background:rgba(0,0,0,0.5); z-index:9999; overflow-y:auto;">
-    <div style="background:#fff; max-width:700px; margin:40px auto; padding:24px; border-radius:8px;">
+    <div style="background:#fff; max-width:min(1100px,95vw); margin:30px auto; padding:24px; border-radius:8px;">
       <h3>CSVで即時発行（setting準拠）</h3>
       <p style="font-size:13px; color:#555;">
         ※ <strong>種別</strong>: 定額 / 定率 / 送料無料（送料無料は値引き額/率不要）<br>
@@ -664,11 +812,15 @@
         ※ 利用条件: 1=金額条件（円以上）/ 2=個数条件（個以上）/ 空欄=指定しない
       </p>
       <p><a href="javascript:void(0)" onclick="dlCsvTemplate()">▼ テンプレートCSVをダウンロード</a></p>
-      <div style="margin:12px 0;">
+      <div style="margin:8px 0;">
         <input type="file" accept=".csv" id="csvFileInput" onchange="onCsvFile(this)">
       </div>
-      <div id="csvPreview" style="max-height:320px; overflow-y:auto; margin:12px 0;"></div>
-      <div style="display:flex; gap:8px;">
+      <div style="margin:8px 0;">
+        <button onclick="addRow_()" style="padding:6px 14px; background:#27ae60; color:#fff; border:none; border-radius:4px; cursor:pointer;">＋ 行を追加</button>
+      </div>
+      <div id="csvPreview" style="overflow-y:auto; margin:8px 0;"></div>
+      <p style="font-size:12px; margin:4px 0;"><span id="csvPreviewCount">発行可能: 0 / NG: 0</span></p>
+      <div style="display:flex; gap:8px; margin-top:8px;">
         <button id="csvIssueBtn" onclick="execCsvIssue()" disabled
                 style="padding:10px 20px; background:#e67e22; color:#fff; border:none; border-radius:4px; cursor:pointer;">発行する</button>
         <button onclick="closeCsvModal()"
