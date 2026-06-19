@@ -384,7 +384,7 @@
     function dlCsvTemplate() {
       const bom  = '﻿';
       const head = 'discountValues,discountType,couponStartDate,couponEndDate,issueCount,memberAvailMaxCount,combineFlag,startHour,startMinute,endHour,endMinute,conditionTypeCode,startValue,itemCodeList\n';
-      const samp = '15,定額,2025/7/1,,0,1,1,0,0,23,59,,,\n';
+      const samp = '15,定額,2026/7/1,,0,1,1,0,0,23,59,,,\n';
       const blob = new Blob([bom + head + samp], { type: 'text/csv;charset=utf-8;' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob); a.download = 'hakkoji_csv_template.csv';
@@ -441,8 +441,9 @@
     }
 
     function parseDateFront_(str) {
-      str = String(str || '').trim().replace(/\//g, '-');
-      return new Date(str + 'T00:00:00');
+      const parts = String(str || '').trim().replace(/-/g, '/').split('/');
+      if (parts.length !== 3) return new Date(NaN);
+      return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
     }
 
     function validateCsvRowFront_(r) {
@@ -455,9 +456,9 @@
       if (!['1','2','3','4','定額','定率','送料無料'].includes(dt))
         return 'discountType 不正（定額/定率/送料無料 or 1/2/3）';
       const sd_str = String(r.couponStartDate || '').trim();
-      if (!sd_str) return 'couponStartDate 必須（例: 2025/7/1）';
+      if (!sd_str) return 'couponStartDate 必須（例: 2026/7/1）';
       const sd = parseDateFront_(sd_str);
-      if (isNaN(sd.getTime())) return '開始日の形式不正（例: 2025/7/1）';
+      if (isNaN(sd.getTime())) return '開始日の形式不正（例: 2026/7/1）';
       const today = new Date(); today.setHours(0, 0, 0, 0);
       if (sd < today) return '開始日は本日以降の日付を指定';
       const ed_str = String(r.couponEndDate || '').trim();
@@ -542,7 +543,7 @@
         ※ <strong>discountValues</strong> は単一数値のみ（例: <code>15</code>）カンマ区切り不可<br>
         ※ <strong>couponEndDate</strong> 省略時は開始日と同日。終了時刻は endHour:endMinute（デフォルト 23:59）<br>
         ※ <strong>discountType</strong>: 定額/定率/送料無料 または 1/2/3。slot 列は不要（自動採番）<br>
-        ※ 1回20件まで。日付形式: <code>2025/7/1</code>（YYYY/M/D）
+        ※ 1回20件まで。日付形式: <code>2026/7/1</code>（YYYY/M/D）
       </p>
       <p><a href="javascript:void(0)" onclick="dlCsvTemplate()">▼ テンプレートCSVをダウンロード</a></p>
       <div style="margin:12px 0;">

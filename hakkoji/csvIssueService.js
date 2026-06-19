@@ -149,7 +149,7 @@ function normalizeDiscountType_(val) {
 function parseDateGAS_(str) {
   str = String(str || '').trim().replace(/\//g, '-');
   var parts = str.split('-');
-  if (parts.length !== 3) throw new Error('日付形式が不正です: ' + str + '（例: 2025/7/1）');
+  if (parts.length !== 3) throw new Error('日付形式が不正です: ' + str + '（例: 2026/7/1）');
   var y = parseInt(parts[0], 10), m = parseInt(parts[1], 10) - 1, d = parseInt(parts[2], 10);
   if (isNaN(y) || isNaN(m + 1) || isNaN(d)) throw new Error('日付が不正です: ' + str);
   return new Date(y, m, d, 0, 0, 0);
@@ -175,9 +175,9 @@ function validateCsvRow_(r) {
   var startDate;
   try {
     startDate = parseDateGAS_(sd_str);
-    if (isNaN(startDate.getTime())) return 'couponStartDate の形式が不正です（例: 2025/7/1）';
+    if (isNaN(startDate.getTime())) return 'couponStartDate の形式が不正です（例: 2026/7/1）';
   } catch (e) {
-    return 'couponStartDate の形式が不正です（例: 2025/7/1）';
+    return 'couponStartDate の形式が不正です（例: 2026/7/1）';
   }
   var today = new Date(); today.setHours(0, 0, 0, 0);
   if (startDate < today) return 'couponStartDate は本日以降の日付を指定してください';
@@ -187,10 +187,10 @@ function validateCsvRow_(r) {
   if (ed_str) {
     try {
       var endDate = parseDateGAS_(ed_str);
-      if (isNaN(endDate.getTime())) return 'couponEndDate の形式が不正です（例: 2025/7/3）';
+      if (isNaN(endDate.getTime())) return 'couponEndDate の形式が不正です（例: 2026/7/3）';
       if (endDate < startDate) return 'couponEndDate は couponStartDate 以降の日付を指定してください';
     } catch (e) {
-      return 'couponEndDate の形式が不正です（例: 2025/7/3）';
+      return 'couponEndDate の形式が不正です（例: 2026/7/3）';
     }
   }
 
