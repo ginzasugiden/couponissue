@@ -3,14 +3,14 @@
  * setting準拠CSVの取込→即時発行
  * 既存の performCouponIssueSettingRow / loginAndUpdateUser / authenticateUser_ を再利用。
  *
- * CSV列仕様（改善後）:
- *   discountValues  - 単一数値のみ（例: 15）複数値不可
- *   discountType    - 定額/定率/送料無料 または 1/2/3
+ * フロントから受け取るオブジェクトキー（HEADER_MAP変換済み）:
+ *   discountType    - 定額/定率/送料無料 または 1/2/3/4
+ *   discountFactor  - 値引き額or率（単一数値。送料無料は内部で1に固定）
  *   couponStartDate - 発行開始日 YYYY/M/D（必須・本日以降）
  *   couponEndDate   - 発行終了日 YYYY/M/D（省略時は couponStartDate と同日）
- *   issueCount, memberAvailMaxCount, combineFlag - 任意（デフォルト0/1/1）
- *   startHour/startMinute/endHour/endMinute - 任意（デフォルト0/0/23/59）
- *   conditionTypeCode, startValue, itemCodeList - 任意
+ *   startHour/startMinute/endHour/endMinute - 省略可（デフォルト0/0/23/59）
+ *   issueCount/memberAvailMaxCount/combineFlag - 省略可（デフォルト0/0/0）
+ *   conditionTypeCode/startValue/itemCodeList  - 省略可
  *   ※ slot は廃止（GAS側で自動採番: 既存最大+1）
  */
 
@@ -51,6 +51,14 @@ function issueFromSettingCsv(userId, password, rows) {
       // discountType を正規化: 定額/1→'1', 定率/2→'2', 送料無料/3/4→'4'
       var discountType = normalizeDiscountType_(r.discountType);
 
+      // discountFactor: 全角→半角変換、送料無料は強制で 1
+      var discountFactor;
+      if (discountType === '4') {
+        discountFactor = '1';
+      } else {
+        discountFactor = String(parseInt(toHankakuGAS_(String(r.discountFactor || '')), 10) || 0);
+      }
+
       // slot 自動採番（対象ユーザーの既存最大スロット+1）
       var settingSheet = SpreadsheetApp.openById(MAIN_SPREADSHEET_ID).getSheetByName('setting');
       var settingData  = settingSheet.getDataRange().getValues();
@@ -67,17 +75,17 @@ function issueFromSettingCsv(userId, password, rows) {
       loginAndUpdateUser(
         userId,
         password,
-        r.discountValues || '',
+        discountFactor,       // ← r.discountValues から変更（単一値・正規化済み）
         discountType,
-        parseInt(r.issueCount,          10) || 0,
-        parseInt(r.memberAvailMaxCount, 10) || 1,
-        parseInt(r.combineFlag,         10) || 1,
+        parseInt(toHankakuGAS_(String(r.issueCount          || '0')), 10) || 0,
+        parseInt(toHankakuGAS_(String(r.memberAvailMaxCount || '0')), 10) || 0,
+        parseInt(toHankakuGAS_(String(r.combineFlag         || '0')), 10) || 0,
         r.conditionTypeCode || '',
         r.startValue        || '',
-        parseInt(r.startHour,   10) || 0,
-        parseInt(r.startMinute, 10) || 0,
-        parseInt(r.endHour,     10) || 23,
-        parseInt(r.endMinute,   10) || 59,
+        parseInt(toHankakuGAS_(String(r.startHour   || '0')),  10) || 0,
+        parseInt(toHankakuGAS_(String(r.startMinute || '0')),  10) || 0,
+        parseInt(toHankakuGAS_(String(r.endHour     || '23')), 10) || 23,
+        parseInt(toHankakuGAS_(String(r.endMinute   || '59')), 10) || 59,
         r.itemCodeList || '',
         slot
       );
@@ -136,6 +144,13 @@ function issueFromSettingCsv(userId, password, rows) {
   };
 }
 
+/** 全角数字→半角数字 */
+function toHankakuGAS_(str) {
+  return String(str || '').replace(/[０-９]/g, function(c) {
+    return String.fromCharCode(c.charCodeAt(0) - 0xFEE0);
+  });
+}
+
 /** discountType 正規化 */
 function normalizeDiscountType_(val) {
   var v = String(val || '').trim();
@@ -157,17 +172,21 @@ function parseDateGAS_(str) {
 
 /** CSV行バリデーション */
 function validateCsvRow_(r) {
-  // discountValues: 単一数値のみ
-  var dv = String(r.discountValues || '').trim();
-  if (!dv) return 'discountValues（値引き額）は必須です';
-  if (dv.indexOf(',') >= 0) return 'discountValues は単一値のみ可（例: 15）複数値は不可';
-  if (isNaN(parseInt(dv, 10))) return 'discountValues は数値で入力してください（例: 15）';
-
-  // discountType
+  // discountType（先に確定させてから factor を検証）
   var dt = String(r.discountType || '').trim();
-  if (!dt) return 'discountType は必須です（定額/定率/送料無料 または 1/2/3）';
-  if (!['1','2','3','4','定額','定率','送料無料'].includes(dt))
-    return 'discountType の値が不正です（定額/定率/送料無料 または 1/2/3）';
+  if (!dt) return '種別は必須です（定額/定率/送料無料）';
+  if (['1','2','3','4','定額','定率','送料無料'].indexOf(dt) === -1)
+    return '種別が不正です（定額/定率/送料無料）';
+  var discountType = normalizeDiscountType_(dt);
+
+  // discountFactor（送料無料は検証不要）
+  if (discountType !== '4') {
+    var fv  = toHankakuGAS_(String(r.discountFactor || '').trim());
+    var f   = parseInt(fv, 10);
+    if (isNaN(f)) return discountType === '2' ? '値引き率は整数で入力してください' : '値引き額は整数で入力してください';
+    if (discountType === '1' && (f < 1 || f > 999999999)) return '値引き額は1〜999999999の整数で入力してください';
+    if (discountType === '2' && (f < 1 || f > 99))        return '値引き率は1〜99の整数で入力してください';
+  }
 
   // couponStartDate: 必須・本日以降
   var sd_str = String(r.couponStartDate || '').trim();

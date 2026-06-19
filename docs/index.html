@@ -369,6 +369,23 @@
     // ===== CSV即時発行 =====
     let _csvRows = [];
 
+    const HEADER_MAP = {
+      '種別（定額/定率/送料無料）':     'discountType',
+      '値引き額または率':              'discountFactor',
+      '開始日（YYYY/M/D）':           'couponStartDate',
+      '終了日（YYYY/M/D省略=同日）':   'couponEndDate',
+      '開始時（0-23）':               'startHour',
+      '開始分（0-59）':               'startMinute',
+      '終了時（0-23）':               'endHour',
+      '終了分（0-59）':               'endMinute',
+      '発行枚数（0=無制限）':          'issueCount',
+      '1人あたり上限（0=無制限）':     'memberAvailMaxCount',
+      '併用可否（0=可/1=不可）':       'combineFlag',
+      '条件種別':                     'conditionTypeCode',
+      '条件値':                       'startValue',
+      '対象商品コード':                'itemCodeList'
+    };
+
     function openCsvModal() {
       _csvRows = [];
       document.getElementById('csvFileInput').value = '';
@@ -383,8 +400,8 @@
 
     function dlCsvTemplate() {
       const bom  = '﻿';
-      const head = 'discountValues,discountType,couponStartDate,couponEndDate,issueCount,memberAvailMaxCount,combineFlag,startHour,startMinute,endHour,endMinute,conditionTypeCode,startValue,itemCodeList\n';
-      const samp = '15,定額,2026/7/1,,0,1,1,0,0,23,59,,,\n';
+      const head = '種別（定額/定率/送料無料）,値引き額または率,開始日（YYYY/M/D）,終了日（YYYY/M/D省略=同日）,開始時（0-23）,開始分（0-59）,終了時（0-23）,終了分（0-59）,発行枚数（0=無制限）,1人あたり上限（0=無制限）,併用可否（0=可/1=不可）,条件種別,条件値,対象商品コード\n';
+      const samp = '定額,15,2026/7/1,2026/7/1,0,0,23,59,0,0,0,,,\n';
       const blob = new Blob([bom + head + samp], { type: 'text/csv;charset=utf-8;' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob); a.download = 'hakkoji_csv_template.csv';
@@ -414,7 +431,8 @@
       text = text.replace(/^﻿/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
       const lines = text.split('\n').filter(l => l.trim() !== '');
       if (!lines.length) return [];
-      const headers = splitLine_(lines[0]).map(h => h.trim());
+      // 日本語ヘッダーを英語キーに変換（未マップの列はそのまま）
+      const headers = splitLine_(lines[0]).map(h => HEADER_MAP[h.trim()] || h.trim());
       return lines.slice(1).map(line => {
         const cols = splitLine_(line), obj = {};
         headers.forEach((h, i) => { obj[h] = (cols[i] || '').trim(); });
@@ -446,46 +464,94 @@
       return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
     }
 
+    function toHankaku_(str) {
+      return String(str || '').replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+    }
+
+    function resolveTypeNum_(v) {
+      v = String(v || '').trim();
+      if (v === '定額'   || v === '1') return 1;
+      if (v === '定率'   || v === '2') return 2;
+      if (v === '送料無料' || v === '3' || v === '4') return 4;
+      return 0;
+    }
+
     function validateCsvRowFront_(r) {
-      const dv = String(r.discountValues || '').trim();
-      if (!dv) return 'discountValues 必須';
-      if (dv.indexOf(',') >= 0) return '単一値のみ可（例: 15）';
-      if (isNaN(Number(dv))) return '数値で入力（例: 15）';
+      // 種別
       const dt = String(r.discountType || '').trim();
-      if (!dt) return 'discountType 必須';
-      if (!['1','2','3','4','定額','定率','送料無料'].includes(dt))
-        return 'discountType 不正（定額/定率/送料無料 or 1/2/3）';
-      const sd_str = String(r.couponStartDate || '').trim();
-      if (!sd_str) return 'couponStartDate 必須（例: 2026/7/1）';
-      const sd = parseDateFront_(sd_str);
-      if (isNaN(sd.getTime())) return '開始日の形式不正（例: 2026/7/1）';
-      const today = new Date(); today.setHours(0, 0, 0, 0);
-      if (sd < today) return '開始日は本日以降の日付を指定';
-      const ed_str = String(r.couponEndDate || '').trim();
-      if (ed_str) {
-        const ed = parseDateFront_(ed_str);
-        if (isNaN(ed.getTime())) return '終了日の形式不正（例: 2025/7/3）';
-        if (ed < sd) return '終了日は開始日以降を指定';
+      if (!dt) return '種別は必須です（定額/定率/送料無料）';
+      const typeNum = resolveTypeNum_(dt);
+      if (typeNum === 0) return '種別が不正です（定額/定率/送料無料）';
+
+      // 値引き額/率（送料無料は検証不要）
+      if (typeNum !== 4) {
+        const fv = toHankaku_(r.discountFactor);
+        const f  = parseInt(fv, 10);
+        if (isNaN(f)) return typeNum === 1 ? '値引き額は整数で入力してください' : '値引き率は整数で入力してください';
+        if (typeNum === 1 && (f < 1 || f > 999999999)) return '値引き額は1〜999999999の整数で入力してください';
+        if (typeNum === 2 && (f < 1 || f > 99))        return '値引き率は1〜99の整数で入力してください';
       }
+
+      // 開始日
+      const sd_str = String(r.couponStartDate || '').trim();
+      if (!sd_str) return '開始日は必須です（例: 2026/7/1）';
+      const sd = parseDateFront_(sd_str);
+      if (isNaN(sd.getTime())) return '開始日の形式が不正です（例: 2026/7/1）';
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      if (sd < today) return '開始日は本日以降の日付を指定してください';
+
+      // 終了日（省略可）
+      const ed_str = String(r.couponEndDate || '').trim();
+      const ed = ed_str ? parseDateFront_(ed_str) : sd;
+      if (ed_str && isNaN(ed.getTime())) return '終了日の形式が不正です（例: 2026/7/3）';
+      if (ed < sd) return '終了日は開始日以降を指定してください';
+
+      // 時刻（全角→半角変換後チェック）
+      const sh = parseInt(toHankaku_(r.startHour)   || '0',  10);
+      const sm = parseInt(toHankaku_(r.startMinute) || '0',  10);
+      const eh = parseInt(toHankaku_(r.endHour)     || '23', 10);
+      const em = parseInt(toHankaku_(r.endMinute)   || '59', 10);
+      if (isNaN(sh) || sh < 0 || sh > 23) return '開始時は0〜23の整数で入力してください';
+      if (isNaN(sm) || sm < 0 || sm > 59) return '開始分は0〜59の整数で入力してください';
+      if (isNaN(eh) || eh < 0 || eh > 23) return '終了時は0〜23の整数で入力してください';
+      if (isNaN(em) || em < 0 || em > 59) return '終了分は0〜59の整数で入力してください';
+
+      // 開始日時 > 終了日時チェック
+      const startDt = new Date(sd.getFullYear(), sd.getMonth(), sd.getDate(), sh, sm);
+      const endDt   = new Date(ed.getFullYear(), ed.getMonth(), ed.getDate(), eh, em);
+      if (startDt > endDt) return '開始日時が終了日時より後になっています';
+
       return null;
     }
 
     function renderPreview_(rows) {
-      const el = document.getElementById('csvPreview');
+      const el  = document.getElementById('csvPreview');
+      const pad = n => ('0' + n).slice(-2);
       if (!rows.length) { el.innerHTML = '<p style="color:red">有効な行がありません</p>'; return; }
       let ok = 0;
       let html = '<table border="1" cellpadding="4" style="font-size:12px;border-collapse:collapse;width:100%">'
-        + '<tr><th>#</th><th>値引き額</th><th>種別</th><th>開始日</th><th>終了日</th><th>商品</th><th>判定</th></tr>';
+        + '<tr><th>#</th><th>種別</th><th>値引き額/率</th><th>開始日</th><th>終了日</th><th>開始時刻</th><th>終了時刻</th><th>商品</th><th>判定</th></tr>';
       rows.forEach((r, i) => {
-        const err = validateCsvRowFront_(r);
-        const valid = !err;
+        const err     = validateCsvRowFront_(r);
+        const valid   = !err;
         if (valid) ok++;
+        const typeNum = resolveTypeNum_(r.discountType);
+        const fv      = toHankaku_(r.discountFactor || '');
+        const factorCell = typeNum === 4 ? '(自動)'
+                         : typeNum === 2 ? `${fv}%`
+                         : `${fv}円`;
+        const sh = pad(parseInt(toHankaku_(r.startHour)   || '0',  10));
+        const sm = pad(parseInt(toHankaku_(r.startMinute) || '0',  10));
+        const eh = pad(parseInt(toHankaku_(r.endHour)     || '23', 10));
+        const em = pad(parseInt(toHankaku_(r.endMinute)   || '59', 10));
         html += `<tr>`
           + `<td>${i + 1}</td>`
-          + `<td>${esc_(r.discountValues || '')}</td>`
           + `<td>${discountTypeLabel_(r.discountType)}</td>`
+          + `<td>${esc_(factorCell)}</td>`
           + `<td>${esc_(r.couponStartDate || '')}</td>`
           + `<td>${esc_(r.couponEndDate || '(同日)')}</td>`
+          + `<td>${sh}:${sm}</td>`
+          + `<td>${eh}:${em}</td>`
           + `<td>${r.itemCodeList ? '指定' : '全品'}</td>`
           + `<td style="color:${valid ? 'green' : 'red'}" title="${esc_(err || '')}">${valid ? 'OK' : 'NG: ' + esc_(err || '')}</td>`
           + `</tr>`;
@@ -540,10 +606,10 @@
     <div style="background:#fff; max-width:700px; margin:40px auto; padding:24px; border-radius:8px;">
       <h3>CSVで即時発行（setting準拠）</h3>
       <p style="font-size:13px; color:#555;">
-        ※ <strong>discountValues</strong> は単一数値のみ（例: <code>15</code>）カンマ区切り不可<br>
-        ※ <strong>couponEndDate</strong> 省略時は開始日と同日。終了時刻は endHour:endMinute（デフォルト 23:59）<br>
-        ※ <strong>discountType</strong>: 定額/定率/送料無料 または 1/2/3。slot 列は不要（自動採番）<br>
-        ※ 1回20件まで。日付形式: <code>2026/7/1</code>（YYYY/M/D）
+        ※ <strong>種別</strong>: 定額 / 定率 / 送料無料（送料無料は値引き額/率不要）<br>
+        ※ <strong>終了日</strong> 省略時は開始日と同日。開始時・終了時刻を指定可（省略=0:00〜23:59）<br>
+        ※ <strong>slot 列は不要</strong>（GAS自動採番）。日付形式: <code>2026/7/1</code>（YYYY/M/D）<br>
+        ※ 1回20件まで。テンプレートをダウンロードして列順を変えないでください。
       </p>
       <p><a href="javascript:void(0)" onclick="dlCsvTemplate()">▼ テンプレートCSVをダウンロード</a></p>
       <div style="margin:12px 0;">
