@@ -383,7 +383,14 @@
       '併用可否（0=不可/1=可）':       'combineFlag',
       '条件種別':                     'conditionTypeCode',
       '条件値':                       'startValue',
-      '対象商品コード':                'itemCodeList'
+      '対象商品コード':                'itemCodeList',
+      'クーポン名（省略=自動生成）':           'couponName',
+      'クーポン説明文':                        'couponCaption',
+      '公開設定（0=限定/1=公開）':             'displayFlag',
+      'クーポン画像URL':                       'couponImageUrl',
+      '利用条件種別（1=金額/2=個数/空=指定しない）': 'conditionTypeCode',
+      '利用条件値':                            'startValue',
+      '販売方法条件（0=どちらも/1=通常のみ/2=定期のみ）': 'salesTypeCondition'
     };
 
     function openCsvModal() {
@@ -400,8 +407,8 @@
 
     function dlCsvTemplate() {
       const bom  = '﻿';
-      const head = '種別（定額/定率/送料無料）,値引き額または率,開始日（YYYY/M/D）,終了日（YYYY/M/D省略=同日）,開始時（0-23）,開始分（0-59）,終了時（0-23）,終了分（0-59）,発行枚数（0=無制限）,1人あたり上限（0=無制限）,併用可否（0=不可/1=可）,条件種別,条件値,対象商品コード\n';
-      const samp = '定額,15,2026/7/1,2026/7/1,0,0,23,59,0,0,0,,,\n';
+      const head = '種別（定額/定率/送料無料）,値引き額または率,開始日（YYYY/M/D）,終了日（YYYY/M/D省略=同日）,開始時（0-23）,開始分（0-59）,終了時（0-23）,終了分（0-59）,発行枚数（0=無制限）,1人あたり上限（0=無制限）,併用可否（0=不可/1=可）,条件種別,条件値,対象商品コード,クーポン名（省略=自動生成）,クーポン説明文,公開設定（0=限定/1=公開）,クーポン画像URL,利用条件種別（1=金額/2=個数/空=指定しない）,利用条件値,販売方法条件（0=どちらも/1=通常のみ/2=定期のみ）\n';
+      const samp = '定額,15,2026/7/1,2026/7/1,0,0,23,59,0,0,0,,,,,,1,,,0\n';
       const blob = new Blob([bom + head + samp], { type: 'text/csv;charset=utf-8;' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob); a.download = 'hakkoji_csv_template.csv';
@@ -521,6 +528,39 @@
       const endDt   = new Date(ed.getFullYear(), ed.getMonth(), ed.getDate(), eh, em);
       if (startDt > endDt) return '開始日時が終了日時より後になっています';
 
+      // クーポン名（任意・30文字以内）
+      const cn = String(r.couponName || '').trim();
+      if (cn && cn.length > 30) return 'クーポン名は30文字以内で入力してください';
+
+      // クーポン説明文（任意・100文字以内）
+      const cap = String(r.couponCaption || '').trim();
+      if (cap && cap.length > 100) return 'クーポン説明文は100文字以内で入力してください';
+
+      // 公開設定（任意・0 or 1）
+      const df = String(r.displayFlag || '1').trim();
+      if (!['0', '1', ''].includes(df)) return '公開設定は 0（限定）または 1（公開）で入力してください';
+
+      // クーポン画像URL（任意・rakuten URLのみ）
+      const imgUrl = String(r.couponImageUrl || '').trim();
+      if (imgUrl && !imgUrl.startsWith('https://image.rakuten.co.jp/')) {
+        return 'クーポン画像URLは https://image.rakuten.co.jp/ で始まるURLを入力してください';
+      }
+
+      // 利用条件種別と条件値の整合性
+      const ctc = String(r.conditionTypeCode || '').trim();
+      const sv  = String(r.startValue || '').trim();
+      if (ctc !== '' && !['1', '2'].includes(ctc)) return '利用条件種別は 1（金額）/ 2（個数）/ 空欄（指定しない）で入力してください';
+      if (ctc !== '' && sv === '') return '利用条件種別を指定した場合は利用条件値も入力してください';
+      if (ctc === '' && sv !== '') return '利用条件値を入力する場合は利用条件種別も指定してください';
+      if (ctc !== '' && sv !== '') {
+        const svNum = parseInt(toHankaku_(sv), 10);
+        if (isNaN(svNum) || svNum < 1 || svNum > 999999999) return '利用条件値は1〜999999999の整数で入力してください';
+      }
+
+      // 販売方法条件（任意・0/1/2）
+      const stc = String(r.salesTypeCondition || '0').trim();
+      if (!['0', '1', '2', ''].includes(stc)) return '販売方法条件は 0（どちらも）/ 1（通常のみ）/ 2（定期のみ）で入力してください';
+
       return null;
     }
 
@@ -609,7 +649,11 @@
         ※ <strong>種別</strong>: 定額 / 定率 / 送料無料（送料無料は値引き額/率不要）<br>
         ※ <strong>終了日</strong> 省略時は開始日と同日。開始時・終了時刻を指定可（省略=0:00〜23:59）<br>
         ※ <strong>slot 列は不要</strong>（GAS自動採番）。日付形式: <code>2026/7/1</code>（YYYY/M/D）<br>
-        ※ 1回20件まで。テンプレートをダウンロードして列順を変えないでください。
+        ※ 1回20件まで。テンプレートをダウンロードして列順を変えないでください。<br>
+        ※ クーポン名省略時は「M/D-M/D SALE！クーポン」形式で自動生成（30文字以内）<br>
+        ※ クーポン画像URLは https://image.rakuten.co.jp/ で始まるURLのみ<br>
+        ※ 利用条件: 1=金額条件（円以上）/ 2=個数条件（個以上）/ 空欄=指定しない<br>
+        ※ 販売方法: 0=どちらも（デフォルト）/ 1=通常のみ / 2=定期のみ
       </p>
       <p><a href="javascript:void(0)" onclick="dlCsvTemplate()">▼ テンプレートCSVをダウンロード</a></p>
       <div style="margin:12px 0;">

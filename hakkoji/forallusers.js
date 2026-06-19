@@ -175,7 +175,8 @@ function issueCouponsForAllUsersBatch() {
  * @param {Array} row        setting シートの１行
  * @param {Date}  couponDay  発行有効日の Date オブジェクト
  */
-function performCouponIssueSettingRow(row, couponDay, couponEndDay) {
+function performCouponIssueSettingRow(row, couponDay, couponEndDay, extra) {
+  extra = extra || {};
   const userId       = row[0];
   const apiIssueCnt  = parseInt(row[6], 10) || 0;
   const lastDisc     = parseInt(row[3], 10) || 0;
@@ -228,7 +229,12 @@ function performCouponIssueSettingRow(row, couponDay, couponEndDay) {
   // 「商品限定」か「店内全品」を先に決める
   const typeLabel = itemCodes.length > 0 ? '商品限定' : '店内全品';
   // ご要望のフォーマット："7月16日SALE！ 商品限定 250円OFF"
-  const finalCouponName = `${mm}月${dd}日SALE！ ${typeLabel} ${displayFactor}${discountUnit}`;
+  const autoName        = `${mm}月${dd}日SALE！ ${typeLabel} ${displayFactor}${discountUnit}`;
+  const finalCouponName = (extra.couponName && extra.couponName.trim()) ? extra.couponName.trim() : autoName;
+  const couponCaption   = (extra.couponCaption && extra.couponCaption.trim()) ? extra.couponCaption.trim() : `${mm}月${dd}日SALEクーポン！`;
+  const displayFlag     = (extra.displayFlag !== undefined && extra.displayFlag !== '') ? String(extra.displayFlag) : '1';
+  const couponImageUrl  = String(extra.couponImageUrl || '');
+  const salesTypeCondition = (extra.salesTypeCondition !== undefined && extra.salesTypeCondition !== '') ? String(extra.salesTypeCondition) : '0';
 
   // --- items XML ---
   const itemTypeFinal = itemCodes.length===0
@@ -253,7 +259,7 @@ function performCouponIssueSettingRow(row, couponDay, couponEndDay) {
     `<?xml version="1.0" encoding="UTF-8"?>` +
     `<request><couponIssueRequest><coupon>` +
       `<couponName>${finalCouponName}</couponName>` +
-      `<couponCaption>${mm}月${dd}日SALEクーポン！</couponCaption>` +
+      `<couponCaption>${couponCaption}</couponCaption>` +
       `<couponStartDate>${couponStart}</couponStartDate>` +
       `<couponEndDate>${couponEnd}</couponEndDate>` +
       `<issueCount>${apiIssueCnt}</issueCount>` +
@@ -268,7 +274,9 @@ function performCouponIssueSettingRow(row, couponDay, couponEndDay) {
       `<birthmonthCond>0</birthmonthCond>` +
       `<multiPrefectureCond><prefectureCond>NONE</prefectureCond></multiPrefectureCond>` +
       `<combineFlag>${combineFlag}</combineFlag>` +
-      `<displayFlag>1</displayFlag>` +
+      `<displayFlag>${displayFlag}</displayFlag>` +
+      (couponImageUrl ? `<couponImageUrl>${couponImageUrl}</couponImageUrl>` : '') +
+      `<salesTypeCondition>${salesTypeCondition}</salesTypeCondition>` +
       itemsXml +
       otherXml +
     `</coupon></couponIssueRequest></request>`;

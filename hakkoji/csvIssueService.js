@@ -71,6 +71,14 @@ function issueFromSettingCsv(userId, password, rows) {
       }
       var slot = maxSlot + 1;
 
+      // conditionTypeCode 正規化: CSV値 1→RS003, 2→RS004
+      var rawCtc    = String(r.conditionTypeCode || '').trim();
+      var ctcForApi = rawCtc === '1' ? 'RS003' : rawCtc === '2' ? 'RS004' : rawCtc;
+
+      // クーポン名（空欄=自動生成）
+      var couponName = String(r.couponName || '').trim();
+      if (!couponName) couponName = buildCouponName_(r.couponStartDate, r.couponEndDate);
+
       // setting に書き込み（loginAndUpdateUser は lastDiscount='' にリセットする）
       loginAndUpdateUser(
         userId,
@@ -80,7 +88,7 @@ function issueFromSettingCsv(userId, password, rows) {
         parseInt(toHankakuGAS_(String(r.issueCount          || '0')), 10) || 0,
         parseInt(toHankakuGAS_(String(r.memberAvailMaxCount || '0')), 10) || 0,
         parseInt(toHankakuGAS_(String(r.combineFlag         || '0')), 10) || 0,
-        r.conditionTypeCode || '',
+        ctcForApi,
         r.startValue        || '',
         parseInt(toHankakuGAS_(String(r.startHour   || '0')),  10) || 0,
         parseInt(toHankakuGAS_(String(r.startMinute || '0')),  10) || 0,
@@ -109,7 +117,14 @@ function issueFromSettingCsv(userId, password, rows) {
                          : null;
 
       // 発行（楽天APIへのPOSTは performCouponIssueSettingRow が担う）
-      var res = performCouponIssueSettingRow(settingRow, couponDay, couponEndDay);
+      var extra = {
+        couponName:         couponName,
+        couponCaption:      String(r.couponCaption       || '').trim(),
+        displayFlag:        String(r.displayFlag !== undefined && r.displayFlag !== '' ? r.displayFlag : '1'),
+        couponImageUrl:     String(r.couponImageUrl      || '').trim(),
+        salesTypeCondition: String(r.salesTypeCondition !== undefined && r.salesTypeCondition !== '' ? r.salesTypeCondition : '0')
+      };
+      var res = performCouponIssueSettingRow(settingRow, couponDay, couponEndDay, extra);
 
       // lastDiscount を書き戻す
       settingData = settingSheet.getDataRange().getValues();
@@ -214,4 +229,15 @@ function validateCsvRow_(r) {
   }
 
   return '';
+}
+
+/** クーポン名自動生成: 同日=「M/D SALE！クーポン」, 別日=「M/D-M/D SALE！クーポン」 */
+function buildCouponName_(startStr, endStr) {
+  var sParts   = String(startStr || '').trim().replace(/-/g, '/').split('/');
+  var eTrimmed = String(endStr   || '').trim();
+  var eParts   = eTrimmed ? eTrimmed.replace(/-/g, '/').split('/') : sParts;
+  var sMonth = parseInt(sParts[1], 10), sDay = parseInt(sParts[2], 10);
+  var eMonth = parseInt(eParts[1], 10), eDay = parseInt(eParts[2], 10);
+  if (sMonth === eMonth && sDay === eDay) return sMonth + '/' + sDay + ' SALE！クーポン';
+  return sMonth + '/' + sDay + '-' + eMonth + '/' + eDay + ' SALE！クーポン';
 }
