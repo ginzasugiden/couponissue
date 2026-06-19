@@ -286,8 +286,29 @@ function performCouponIssueSettingRow(row, couponDay, couponEndDay, extra) {
     headers:     { Authorization: auth },
     muteHttpExceptions: true
   });
-  if (res.getResponseCode() !== 200) {
-    throw new Error(`HTTP ${res.getResponseCode()}`);
+  var responseCode = res.getResponseCode();
+  var responseBody = res.getContentText();
+  Logger.log('楽天API HTTP: ' + responseCode);
+  Logger.log('楽天API Response: ' + responseBody);
+  if (responseCode !== 200) {
+    throw new Error('HTTP ' + responseCode + ': ' + responseBody);
+  }
+  // XMLにerrorが含まれていたらエラーとして扱う
+  if (responseBody.indexOf('<errors>') !== -1) {
+    throw new Error('楽天APIエラー: ' + responseBody);
+  }
+
+  // pcGetUrl を取り出す
+  var pcGetUrl = '';
+  try {
+    var xmlDoc = XmlService.parse(responseBody);
+    var root = xmlDoc.getRootElement();
+    var couponEl = root.getChild('coupon');
+    if (couponEl) {
+      pcGetUrl = couponEl.getChildText('pcGetUrl') || '';
+    }
+  } catch(xmlErr) {
+    Logger.log('XML parse error: ' + xmlErr);
   }
 
   return {
@@ -298,7 +319,8 @@ function performCouponIssueSettingRow(row, couponDay, couponEndDay, extra) {
     discountUnit,
     couponStart,
     couponEnd,
-    itemCodes
+    itemCodes,
+    pcGetUrl
   };
 }
 

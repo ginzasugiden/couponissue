@@ -786,12 +786,17 @@
       const el = document.getElementById('csvResult');
       let html = `<p><strong>発行完了: ${d.issued} / ${d.total} 件</strong></p>`
         + '<table border="1" cellpadding="4" style="font-size:12px;border-collapse:collapse;width:100%">'
-        + '<tr><th>#</th><th>状態</th><th>クーポン名</th><th>開始</th><th>終了</th><th>メッセージ</th></tr>';
+        + '<tr><th>#</th><th>状態</th><th>クーポン名</th><th>開始</th><th>終了</th><th>獲得URL</th><th>メッセージ</th></tr>';
       (d.results || []).forEach(r => {
         const color = r.status === 'issued' ? 'green' : 'red';
+        const urlCell = r.pcGetUrl
+          ? `<td><a href="${esc_(r.pcGetUrl)}" target="_blank">開く</a>`
+            + `<button onclick="navigator.clipboard.writeText('${esc_(r.pcGetUrl)}').then(()=>this.textContent='✓').catch(()=>{})" `
+            + `style="margin-left:4px;font-size:11px">コピー</button></td>`
+          : '<td>-</td>';
         html += `<tr><td>${r.row}</td><td style="color:${color}">${r.status}</td>`
           + `<td>${esc_(r.couponName || '')}</td><td>${esc_(r.couponStart || '')}</td>`
-          + `<td>${esc_(r.couponEnd || '')}</td><td>${esc_(r.message || '')}</td></tr>`;
+          + `<td>${esc_(r.couponEnd || '')}</td>${urlCell}<td>${esc_(r.message || '')}</td></tr>`;
       });
       el.innerHTML = html + '</table>';
     }

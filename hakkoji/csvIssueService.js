@@ -143,7 +143,8 @@ function issueFromSettingCsv(userId, password, rows) {
         couponEnd:     res.couponEnd          || '',
         displayFactor: res.displayFactor,
         discountUnit:  res.discountUnit       || '',
-        download:      res.download
+        download:      res.download,
+        pcGetUrl:      res.pcGetUrl           || ''
       });
       okCount++;
 
