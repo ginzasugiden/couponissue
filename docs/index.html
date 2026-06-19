@@ -397,7 +397,13 @@
       document.getElementById('csvResult').innerHTML = '';
       document.getElementById('csvIssueBtn').disabled = true;
       document.getElementById('csvModal').style.display = 'block';
-      addRow_();
+      _csvRows.push({ discountType:'定額', discountFactor:'',
+        couponStartDate:'', couponEndDate:'', startHour:'0', startMinute:'0',
+        endHour:'23', endMinute:'59', issueCount:'0', memberAvailMaxCount:'0',
+        combineFlag:'0', conditionTypeCode:'', startValue:'',
+        itemCodeList:'', couponName:'', couponCaption:'',
+        displayFlag:'1', couponImageUrl:'' });
+      renderPreview_();
     }
     function closeCsvModal() {
       document.getElementById('csvModal').style.display = 'none';
@@ -565,6 +571,8 @@
         document.getElementById('csvIssueBtn').disabled = true;
         const countEl = document.getElementById('csvPreviewCount');
         if (countEl) countEl.textContent = '発行可能: 0 / NG: 0';
+        const addBtnE = document.getElementById('addRowBtn');
+        if (addBtnE) { addBtnE.disabled = false; addBtnE.textContent = '＋ 行を追加（残り5件）'; addBtnE.style.background = '#27ae60'; }
         return;
       }
       let ok = 0;
@@ -674,6 +682,13 @@
       const countEl = document.getElementById('csvPreviewCount');
       if (countEl) countEl.textContent = `発行可能: ${ok} / NG: ${_csvRows.length - ok}`;
       document.getElementById('csvIssueBtn').disabled = (ok === 0 || !_csvRows.length);
+      const addBtn = document.getElementById('addRowBtn');
+      if (addBtn) {
+        const atMax = _csvRows.length >= 5;
+        addBtn.disabled = atMax;
+        addBtn.textContent = atMax ? '上限5件に達しました' : `＋ 行を追加（残り${5 - _csvRows.length}件）`;
+        addBtn.style.background = atMax ? '#999' : '#27ae60';
+      }
     }
 
     function esc_(s) {
@@ -702,6 +717,10 @@
     }
 
     function addRow_() {
+      if (_csvRows.length >= 5) {
+        alert('一度に発行できるのは5件までです。');
+        return;
+      }
       _csvRows.push({
         discountType: '定額', discountFactor: '',
         couponStartDate: '', couponEndDate: '',
@@ -819,7 +838,7 @@
         <input type="file" accept=".csv" id="csvFileInput" onchange="onCsvFile(this)">
       </div>
       <div style="margin:8px 0;">
-        <button onclick="addRow_()" style="padding:6px 14px; background:#27ae60; color:#fff; border:none; border-radius:4px; cursor:pointer;">＋ 行を追加</button>
+        <button id="addRowBtn" onclick="addRow_()" style="padding:6px 14px; background:#27ae60; color:#fff; border:none; border-radius:4px; cursor:pointer;">＋ 行を追加（残り5件）</button>
       </div>
       <div id="csvPreview" style="overflow-y:auto; margin:8px 0;"></div>
       <p style="font-size:12px; margin:4px 0;"><span id="csvPreviewCount">発行可能: 0 / NG: 0</span></p>
