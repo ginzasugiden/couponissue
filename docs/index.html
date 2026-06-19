@@ -381,15 +381,13 @@
       '発行枚数（0=無制限）':          'issueCount',
       '1人あたり上限（0=無制限）':     'memberAvailMaxCount',
       '併用可否（0=不可/1=可）':       'combineFlag',
-      '条件種別':                     'conditionTypeCode',
-      '条件値':                       'startValue',
       '対象商品コード':                'itemCodeList',
       'クーポン名（省略=自動生成）':           'couponName',
       'クーポン説明文':                        'couponCaption',
       '公開設定（0=限定/1=公開）':             'displayFlag',
       'クーポン画像URL':                       'couponImageUrl',
-      '利用条件種別（1=金額/2=個数/空=指定しない）': 'conditionTypeCode',
-      '利用条件値':                            'startValue'
+      '利用条件種別（空=指定なし/1=金額/2=個数）': 'conditionTypeCode',
+      '利用条件値（金額:円/個数:個）':          'startValue'
     };
 
     function openCsvModal() {
@@ -407,8 +405,8 @@
 
     function dlCsvTemplate() {
       const bom  = '﻿';
-      const head = '種別（定額/定率/送料無料）,値引き額または率,開始日（YYYY/M/D）,終了日（YYYY/M/D省略=同日）,開始時（0-23）,開始分（0-59）,終了時（0-23）,終了分（0-59）,発行枚数（0=無制限）,1人あたり上限（0=無制限）,併用可否（0=不可/1=可）,条件種別,条件値,対象商品コード,クーポン名（省略=自動生成）,クーポン説明文,公開設定（0=限定/1=公開）,クーポン画像URL,利用条件種別（1=金額/2=個数/空=指定しない）,利用条件値\n';
-      const samp = '定額,15,2026/7/1,2026/7/1,0,0,23,59,0,0,0,,,,,,1,,,\n';
+      const head = '種別（定額/定率/送料無料）,値引き額または率,開始日（YYYY/M/D）,終了日（YYYY/M/D省略=同日）,開始時（0-23）,開始分（0-59）,終了時（0-23）,終了分（0-59）,発行枚数（0=無制限）,1人あたり上限（0=無制限）,併用可否（0=不可/1=可）,対象商品コード,クーポン名（省略=自動生成）,クーポン説明文,公開設定（0=限定/1=公開）,クーポン画像URL,利用条件種別（空=指定なし/1=金額/2=個数）,利用条件値（金額:円/個数:個）\n';
+      const samp = '定額,15,2026/7/1,2026/7/1,0,0,23,59,0,0,0,,,,1,,,\n';
       const blob = new Blob([bom + head + samp], { type: 'text/csv;charset=utf-8;' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob); a.download = 'hakkoji_csv_template.csv';
