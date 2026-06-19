@@ -389,8 +389,7 @@
       '公開設定（0=限定/1=公開）':             'displayFlag',
       'クーポン画像URL':                       'couponImageUrl',
       '利用条件種別（1=金額/2=個数/空=指定しない）': 'conditionTypeCode',
-      '利用条件値':                            'startValue',
-      '販売方法条件（0=どちらも/1=通常のみ/2=定期のみ）': 'salesTypeCondition'
+      '利用条件値':                            'startValue'
     };
 
     function openCsvModal() {
@@ -407,8 +406,8 @@
 
     function dlCsvTemplate() {
       const bom  = '﻿';
-      const head = '種別（定額/定率/送料無料）,値引き額または率,開始日（YYYY/M/D）,終了日（YYYY/M/D省略=同日）,開始時（0-23）,開始分（0-59）,終了時（0-23）,終了分（0-59）,発行枚数（0=無制限）,1人あたり上限（0=無制限）,併用可否（0=不可/1=可）,条件種別,条件値,対象商品コード,クーポン名（省略=自動生成）,クーポン説明文,公開設定（0=限定/1=公開）,クーポン画像URL,利用条件種別（1=金額/2=個数/空=指定しない）,利用条件値,販売方法条件（0=どちらも/1=通常のみ/2=定期のみ）\n';
-      const samp = '定額,15,2026/7/1,2026/7/1,0,0,23,59,0,0,0,,,,,,1,,,0\n';
+      const head = '種別（定額/定率/送料無料）,値引き額または率,開始日（YYYY/M/D）,終了日（YYYY/M/D省略=同日）,開始時（0-23）,開始分（0-59）,終了時（0-23）,終了分（0-59）,発行枚数（0=無制限）,1人あたり上限（0=無制限）,併用可否（0=不可/1=可）,条件種別,条件値,対象商品コード,クーポン名（省略=自動生成）,クーポン説明文,公開設定（0=限定/1=公開）,クーポン画像URL,利用条件種別（1=金額/2=個数/空=指定しない）,利用条件値\n';
+      const samp = '定額,15,2026/7/1,2026/7/1,0,0,23,59,0,0,0,,,,,,1,,,\n';
       const blob = new Blob([bom + head + samp], { type: 'text/csv;charset=utf-8;' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob); a.download = 'hakkoji_csv_template.csv';
@@ -557,10 +556,6 @@
         if (isNaN(svNum) || svNum < 1 || svNum > 999999999) return '利用条件値は1〜999999999の整数で入力してください';
       }
 
-      // 販売方法条件（任意・0/1/2）
-      const stc = String(r.salesTypeCondition || '0').trim();
-      if (!['0', '1', '2', ''].includes(stc)) return '販売方法条件は 0（どちらも）/ 1（通常のみ）/ 2（定期のみ）で入力してください';
-
       return null;
     }
 
@@ -570,7 +565,7 @@
       if (!rows.length) { el.innerHTML = '<p style="color:red">有効な行がありません</p>'; return; }
       let ok = 0;
       let html = '<table border="1" cellpadding="4" style="font-size:12px;border-collapse:collapse;width:100%">'
-        + '<tr><th>#</th><th>種別</th><th>値引き額/率</th><th>開始日</th><th>終了日</th><th>開始時刻</th><th>終了時刻</th><th>商品</th><th>判定</th></tr>';
+        + '<tr><th>#</th><th>種別</th><th>値引き額/率</th><th>開始日</th><th>終了日</th><th>開始時刻</th><th>終了時刻</th><th>商品</th><th>クーポン名</th><th>説明文</th><th>公開設定</th><th>画像</th><th>利用条件</th><th>判定</th></tr>';
       rows.forEach((r, i) => {
         const err     = validateCsvRowFront_(r);
         const valid   = !err;
@@ -584,6 +579,15 @@
         const sm = pad(parseInt(toHankaku_(r.startMinute) || '0',  10));
         const eh = pad(parseInt(toHankaku_(r.endHour)     || '23', 10));
         const em = pad(parseInt(toHankaku_(r.endMinute)   || '59', 10));
+        const cnDisp  = r.couponName ? esc_(r.couponName) : '<span style="color:#999">自動生成</span>';
+        const capDisp = r.couponCaption ? esc_(r.couponCaption) : '-';
+        const dfDisp  = String(r.displayFlag || '').trim() === '0' ? '限定' : '公開';
+        const imgDisp = r.couponImageUrl ? 'あり' : '-';
+        const ctcVal  = String(r.conditionTypeCode || '').trim();
+        const svVal   = toHankaku_(r.startValue || '');
+        const ctcDisp = ctcVal === '1' ? `金額:${svVal}円以上`
+                      : ctcVal === '2' ? `個数:${svVal}個以上`
+                      : '指定しない';
         html += `<tr>`
           + `<td>${i + 1}</td>`
           + `<td>${discountTypeLabel_(r.discountType)}</td>`
@@ -593,6 +597,11 @@
           + `<td>${sh}:${sm}</td>`
           + `<td>${eh}:${em}</td>`
           + `<td>${r.itemCodeList ? '指定' : '全品'}</td>`
+          + `<td>${cnDisp}</td>`
+          + `<td>${capDisp}</td>`
+          + `<td>${dfDisp}</td>`
+          + `<td>${imgDisp}</td>`
+          + `<td>${ctcDisp}</td>`
           + `<td style="color:${valid ? 'green' : 'red'}" title="${esc_(err || '')}">${valid ? 'OK' : 'NG: ' + esc_(err || '')}</td>`
           + `</tr>`;
       });
@@ -652,8 +661,7 @@
         ※ 1回20件まで。テンプレートをダウンロードして列順を変えないでください。<br>
         ※ クーポン名省略時は「M/D-M/D SALE！クーポン」形式で自動生成（30文字以内）<br>
         ※ クーポン画像URLは https://image.rakuten.co.jp/ で始まるURLのみ<br>
-        ※ 利用条件: 1=金額条件（円以上）/ 2=個数条件（個以上）/ 空欄=指定しない<br>
-        ※ 販売方法: 0=どちらも（デフォルト）/ 1=通常のみ / 2=定期のみ
+        ※ 利用条件: 1=金額条件（円以上）/ 2=個数条件（個以上）/ 空欄=指定しない
       </p>
       <p><a href="javascript:void(0)" onclick="dlCsvTemplate()">▼ テンプレートCSVをダウンロード</a></p>
       <div style="margin:12px 0;">

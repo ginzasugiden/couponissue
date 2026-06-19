@@ -234,7 +234,6 @@ function performCouponIssueSettingRow(row, couponDay, couponEndDay, extra) {
   const couponCaption   = (extra.couponCaption && extra.couponCaption.trim()) ? extra.couponCaption.trim() : `${mm}月${dd}日SALEクーポン！`;
   const displayFlag     = (extra.displayFlag !== undefined && extra.displayFlag !== '') ? String(extra.displayFlag) : '1';
   const couponImageUrl  = String(extra.couponImageUrl || '');
-  const salesTypeCondition = (extra.salesTypeCondition !== undefined && extra.salesTypeCondition !== '') ? String(extra.salesTypeCondition) : '0';
 
   // --- items XML ---
   const itemTypeFinal = itemCodes.length===0
@@ -275,8 +274,7 @@ function performCouponIssueSettingRow(row, couponDay, couponEndDay, extra) {
       `<multiPrefectureCond><prefectureCond>NONE</prefectureCond></multiPrefectureCond>` +
       `<combineFlag>${combineFlag}</combineFlag>` +
       `<displayFlag>${displayFlag}</displayFlag>` +
-      (couponImageUrl ? `<couponImageUrl>${couponImageUrl}</couponImageUrl>` : '') +
-      `<salesTypeCondition>${salesTypeCondition}</salesTypeCondition>` +
+      (couponImageUrl ? `<couponImage>${couponImageUrl}</couponImage>` : '') +
       itemsXml +
       otherXml +
     `</coupon></couponIssueRequest></request>`;

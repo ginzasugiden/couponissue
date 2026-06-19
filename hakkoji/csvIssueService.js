@@ -121,8 +121,7 @@ function issueFromSettingCsv(userId, password, rows) {
         couponName:         couponName,
         couponCaption:      String(r.couponCaption       || '').trim(),
         displayFlag:        String(r.displayFlag !== undefined && r.displayFlag !== '' ? r.displayFlag : '1'),
-        couponImageUrl:     String(r.couponImageUrl      || '').trim(),
-        salesTypeCondition: String(r.salesTypeCondition !== undefined && r.salesTypeCondition !== '' ? r.salesTypeCondition : '0')
+        couponImageUrl:     String(r.couponImageUrl      || '').trim()
       };
       var res = performCouponIssueSettingRow(settingRow, couponDay, couponEndDay, extra);
 
