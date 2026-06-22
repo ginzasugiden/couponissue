@@ -112,7 +112,7 @@
       if (!userId || !pw) { errEl.textContent = 'IDとパスワードを入力してください'; return; }
       btn.disabled = true; btn.textContent = '認証中...'; errEl.textContent = '';
       try {
-        await callApi('getSettings', { userId, pw });
+        await callApi('getUserSettings', { userId, pw });
         sessionStorage.setItem('auth', JSON.stringify({ userId, pw }));
         document.getElementById('loginGate').style.display = 'none';
       } catch(e) {
