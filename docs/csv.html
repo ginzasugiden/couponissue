@@ -7,794 +7,790 @@
   <script src="assets/config.js"></script>
   <script src="assets/api.js"></script>
   <style>
-    body {
-      background: #f0f4f8;
-      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-      margin: 0;
-      padding: 16px;
-    }
+    *{box-sizing:border-box;}
+    body{background:#f8f5f2;font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;margin:0;padding:16px;color:#333;}
+
+    /* ── ガイド ── */
+    details.guide{background:#fff;border:1px solid #e0d5cc;border-radius:8px;padding:12px 16px;margin-bottom:16px;}
+    details.guide summary{cursor:pointer;font-weight:700;color:#5a3e36;font-size:13px;}
+    details.guide table{width:100%;border-collapse:collapse;margin-top:10px;font-size:12px;}
+    details.guide th,details.guide td{border:1px solid #e0d5cc;padding:5px 8px;text-align:left;vertical-align:top;}
+    details.guide th{background:#f9f0ea;color:#5a3e36;}
+
+    /* ── カード ── */
+    .coupon-card{background:#fff;border:1px solid #e0d5cc;border-radius:12px;margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,0.06);overflow:hidden;}
+    .card-header{background:linear-gradient(135deg,#f9f0ea 0%,#fdf6f0 100%);padding:12px 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e8ddd5;}
+    .card-title{font-size:15px;font-weight:700;color:#5a3e36;}
+    .card-del{background:#fff;border:1px solid #e0d5cc;border-radius:6px;padding:4px 10px;cursor:pointer;color:#888;font-size:12px;}
+    .card-del:hover{background:#ffebee;color:#c62828;border-color:#ef9a9a;}
+
+    .card-section{border-bottom:1px solid #f0e8e0;padding:14px 18px;}
+    .card-section:last-of-type{border-bottom:none;}
+    .sec-title{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9e7060;margin-bottom:12px;display:flex;align-items:center;gap:6px;}
+    .sec-title::after{content:'';flex:1;height:1px;background:#f0e8e0;}
+
+    /* ── フィールド ── */
+    .field{margin-bottom:12px;}
+    .field:last-child{margin-bottom:0;}
+    .flabel{display:block;font-size:12px;font-weight:600;color:#555;margin-bottom:4px;}
+    .hint{font-size:11px;color:#bbb;margin-top:3px;line-height:1.5;}
+    .field input[type=text],.field select{width:100%;padding:7px 10px;border:1px solid #d0c8c0;border-radius:6px;font-size:13px;color:#333;background:#fff;}
+    .field input[type=text]:focus,.field select:focus{outline:none;border-color:#c9a227;box-shadow:0 0 0 2px rgba(201,162,39,.15);}
+    .field input:disabled,.field select:disabled{background:#f5f5f5;color:#ccc;}
+    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+    .time-row{display:flex;align-items:center;gap:5px;font-size:13px;}
+    .time-row select{width:auto;padding:6px 8px;}
+
+    /* ── ラジオ/チェック（ピル型） ── */
+    .rg,.cg{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px;}
+    .rg label,.cg label{display:inline-flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:5px 10px;border:1px solid #e0d5cc;border-radius:20px;background:#fafafa;white-space:nowrap;user-select:none;}
+    .rg label:has(input:checked),.cg label:has(input:checked){background:#f9f0ea;border-color:#c9a227;color:#5a3e36;font-weight:600;}
+    .rg input,.cg input{accent-color:#c9a227;width:13px;height:13px;}
+
+    /* ── 居住地チェック ── */
+    .pref-region{margin-bottom:8px;}
+    .pref-rgname{font-size:10px;font-weight:700;color:#9e7060;margin-bottom:3px;}
+    .pref-row{display:flex;flex-wrap:wrap;gap:4px;}
+    .pref-row label{font-size:11px;padding:3px 7px;border-radius:12px;}
+
+    /* ── ロックグループ ── */
+    .lock-grp{transition:opacity .2s;}
+    .lock-banner{display:none;background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:8px 12px;font-size:12px;color:#856404;margin-bottom:10px;}
+
+    /* ── リピーターサブ ── */
+    .rep-sub{display:none;background:#f9f9f9;border:1px dashed #e0d5cc;border-radius:8px;padding:10px 12px;margin-top:8px;}
+
+    /* ── 判定バナー ── */
+    .judge{margin:14px 18px;padding:10px 14px;border-radius:8px;font-size:13px;font-weight:600;}
+    .j-ok  {background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;}
+    .j-ng  {background:#ffebee;color:#c62828;border:1px solid #ef9a9a;}
+    .j-warn{background:#fff8e1;color:#e65100;border:1px solid #ffe082;}
+    .j-rank{background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;}
+
+    /* ── ボタン ── */
+    .btn-add{display:inline-block;padding:8px 18px;background:#7a9e87;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;margin-bottom:14px;}
+    .btn-add:hover{background:#5e836d;}
+    .btn-add:disabled{background:#bbb;cursor:not-allowed;}
+    .btn-issue{padding:12px 36px;background:#c9a227;color:#fff;border:none;border-radius:8px;font-size:15px;cursor:pointer;font-weight:700;}
+    .btn-issue:hover{background:#a88320;}
+    .btn-issue:disabled{background:#ccc;cursor:not-allowed;}
+    .count-bar{font-size:12px;color:#888;margin:4px 0 10px;}
+
+    .wrap{max-width:720px;margin:0 auto;}
+    @media(max-width:500px){.two-col{grid-template-columns:1fr;}}
   </style>
 </head>
 <body>
 
-  <!-- ログインゲート オーバーレイ -->
-  <div id="loginGate" style="
-    position:fixed; top:0; left:0; width:100%; height:100%;
-    background:rgba(0,0,0,0.6); z-index:9999;
-    display:flex; align-items:center; justify-content:center;">
-    <div style="background:#fff; padding:40px; border-radius:12px;
-                width:320px; box-shadow:0 4px 20px rgba(0,0,0,0.3);">
-      <h2 style="text-align:center; margin-bottom:24px; font-size:18px;">毎日クーポン発行侍</h2>
-      <div style="margin-bottom:16px;">
-        <label style="display:block; font-size:13px; margin-bottom:4px;">ユーザーID</label>
-        <input id="gateUserId" type="text" placeholder="ユーザーID"
-               style="width:100%; padding:8px; box-sizing:border-box; border:1px solid #ccc; border-radius:4px;">
+<!-- ログインゲート -->
+<div id="loginGate" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;">
+  <div style="background:#fff;padding:40px;border-radius:12px;width:320px;box-shadow:0 4px 20px rgba(0,0,0,0.3);">
+    <h2 style="text-align:center;margin-bottom:24px;font-size:18px;">毎日クーポン発行侍</h2>
+    <div style="margin-bottom:16px;">
+      <label style="display:block;font-size:13px;margin-bottom:4px;">ユーザーID</label>
+      <input id="gateUserId" type="text" placeholder="ユーザーID" style="width:100%;padding:8px;box-sizing:border-box;border:1px solid #ccc;border-radius:4px;">
+    </div>
+    <div style="margin-bottom:20px;">
+      <label style="display:block;font-size:13px;margin-bottom:4px;">パスワード</label>
+      <input id="gatePw" type="password" placeholder="パスワード" style="width:100%;padding:8px;box-sizing:border-box;border:1px solid #ccc;border-radius:4px;">
+    </div>
+    <div id="gateError" style="color:red;font-size:12px;margin-bottom:12px;min-height:16px;"></div>
+    <button id="gateLoginBtn" onclick="gateLogin_()" style="width:100%;padding:12px;background:#2196F3;color:#fff;border:none;border-radius:6px;font-size:15px;cursor:pointer;">ログイン</button>
+  </div>
+</div>
+
+<!-- ログアウト -->
+<button onclick="sessionStorage.removeItem('auth');location.reload();" style="position:fixed;top:10px;right:10px;font-size:12px;padding:4px 10px;background:#888;color:#fff;border:none;border-radius:4px;cursor:pointer;z-index:1000;">ログアウト</button>
+
+<div class="wrap">
+  <div style="padding:8px 0 12px;">
+    <a href="/" style="font-size:13px;color:#666;">← 設定ページに戻る</a>
+  </div>
+
+  <h2 style="margin-bottom:6px;color:#5a3e36;">CSVで即時発行</h2>
+
+  <!-- 記入ガイド -->
+  <details class="guide">
+    <summary>📋 記入ガイド（CSV列の有効値一覧）</summary>
+    <table>
+      <tr><th>列名</th><th>入れる値</th></tr>
+      <tr><td>種別</td><td>定額 / 定率 / 送料無料</td></tr>
+      <tr><td>値引き額または率</td><td>定額: 1〜999999999（円）/ 定率: 1〜99（%）/ 送料無料: 空欄</td></tr>
+      <tr><td>開始日</td><td>YYYY/M/D（例: 2026/7/1）・本日以降</td></tr>
+      <tr><td>終了日</td><td>YYYY/M/D・省略すると開始日と同じ</td></tr>
+      <tr><td>開始時 / 開始分</td><td>0〜23 / 0〜59・省略=0</td></tr>
+      <tr><td>終了時 / 終了分</td><td>0〜23 / 0〜59・省略=23/59</td></tr>
+      <tr><td>発行枚数</td><td>整数・0=無制限</td></tr>
+      <tr><td>1人あたり上限</td><td>整数・0=無制限</td></tr>
+      <tr><td>併用可否</td><td>0=不可 / 1=可</td></tr>
+      <tr><td>対象商品コード</td><td>商品管理番号をカンマ区切り・空欄=全品</td></tr>
+      <tr><td>クーポン名</td><td>30文字以内・空欄=自動生成</td></tr>
+      <tr><td>クーポン説明文</td><td>100文字以内・省略可</td></tr>
+      <tr><td>公開設定</td><td>1=公開 / 0=限定公開</td></tr>
+      <tr><td>クーポン画像URL</td><td>https://image.rakuten.co.jp/ で始まるURL・省略可</td></tr>
+      <tr><td>利用条件種別</td><td>空欄=指定なし / 1=金額条件 / 2=個数条件</td></tr>
+      <tr><td>利用条件値</td><td>金額条件: 円 / 個数条件: 個（整数）</td></tr>
+      <tr><td>会員ランク</td><td>レギュラー/シルバー/ゴールド/プラチナ/ダイヤモンド（複数はカンマ区切り）・空欄=指定なし</td></tr>
+      <tr><td>購入履歴</td><td>新規 / リピーター・空欄=指定なし</td></tr>
+      <tr><td>購入履歴期間（月）</td><td>リピーター時必須: 1 / 3 / 6 / 12 / 24</td></tr>
+      <tr><td>購入回数下限</td><td>リピーター時必須: 1〜10</td></tr>
+      <tr><td>購入回数上限</td><td>リピーター時: 0=上限なし / 1〜10（下限以上）</td></tr>
+      <tr><td>性別</td><td>男性 / 女性・空欄=指定なし</td></tr>
+      <tr><td>年齢下限</td><td>10〜100・空欄=指定なし</td></tr>
+      <tr><td>年齢上限</td><td>10〜100・空欄=指定なし（両指定時: 下限≤上限）</td></tr>
+      <tr><td>誕生月</td><td>1〜12・空欄=指定なし</td></tr>
+      <tr><td>居住地</td><td>都道府県名カンマ区切り（例: 東京,神奈川）・空欄=全国</td></tr>
+    </table>
+  </details>
+
+  <p style="font-size:13px;color:#555;line-height:1.7;margin-bottom:10px;">
+    ※ 1回5件まで。CSVアップロード後に各カードで内容を確認・編集してから発行してください。<br>
+    ※ slot列不要（自動採番）。クーポン名省略時は「M/D SALE！クーポン」形式で自動生成。
+  </p>
+
+  <p style="margin-bottom:10px;"><a href="javascript:void(0)" onclick="dlCsvTemplate()" style="color:#c9a227;font-size:13px;">▼ テンプレートCSVをダウンロード</a></p>
+
+  <div style="margin:8px 0;">
+    <input type="file" accept=".csv" id="csvFileInput" onchange="onCsvFile(this)" style="font-size:13px;">
+  </div>
+
+  <button id="addRowBtn" class="btn-add" onclick="addRow_()">＋ 行を追加（残り5件）</button>
+
+  <div id="cardContainer"></div>
+
+  <div class="count-bar"><span id="csvPreviewCount">発行可能: 0 / NG: 0</span></div>
+  <div style="margin-bottom:16px;">
+    <button id="csvIssueBtn" class="btn-issue" onclick="execCsvIssue()" disabled>発行する</button>
+  </div>
+  <div id="csvResult"></div>
+</div>
+
+<script>
+// ===== ログインゲート =====
+(function initGate(){
+  var stored=sessionStorage.getItem('auth');
+  if(stored){var g=document.getElementById('loginGate');if(g)g.style.display='none';}
+  document.addEventListener('keydown',function(e){
+    var g=document.getElementById('loginGate');
+    if(g&&g.style.display!=='none'&&e.key==='Enter')gateLogin_();
+  });
+})();
+async function gateLogin_(){
+  var uid=document.getElementById('gateUserId').value.trim();
+  var pw=document.getElementById('gatePw').value.trim();
+  var err=document.getElementById('gateError');
+  var btn=document.getElementById('gateLoginBtn');
+  if(!uid||!pw){err.textContent='IDとパスワードを入力してください';return;}
+  btn.disabled=true;btn.textContent='認証中...';err.textContent='';
+  try{
+    await callApi('getUserSettings',{userId:uid,pw:pw});
+    sessionStorage.setItem('auth',JSON.stringify({userId:uid,pw:pw}));
+    document.getElementById('loginGate').style.display='none';
+  }catch(e){
+    err.textContent='認証エラー: IDまたはパスワードが正しくありません';
+    btn.disabled=false;btn.textContent='ログイン';
+  }
+}
+
+// ===== 地方別都道府県 =====
+const PREF_REGIONS=[
+  {name:'北海道',prefs:['北海道']},
+  {name:'東北',prefs:['青森','岩手','宮城','秋田','山形','福島']},
+  {name:'関東',prefs:['茨城','栃木','群馬','埼玉','千葉','東京','神奈川']},
+  {name:'中部',prefs:['新潟','富山','石川','福井','山梨','長野','岐阜','静岡','愛知']},
+  {name:'近畿',prefs:['三重','滋賀','京都','大阪','兵庫','奈良','和歌山']},
+  {name:'中国',prefs:['鳥取','島根','岡山','広島','山口']},
+  {name:'四国',prefs:['徳島','香川','愛媛','高知']},
+  {name:'九州・沖縄',prefs:['福岡','佐賀','長崎','熊本','大分','宮崎','鹿児島','沖縄']}
+];
+
+// ===== 行データ =====
+let _csvRows=[];
+
+// ===== HEADER_MAP =====
+const HEADER_MAP={
+  '種別（定額/定率/送料無料）':     'discountType',
+  '値引き額または率':              'discountFactor',
+  '開始日（YYYY/M/D）':           'couponStartDate',
+  '終了日（YYYY/M/D省略=同日）':   'couponEndDate',
+  '開始時（0-23）':               'startHour',
+  '開始分（0-59）':               'startMinute',
+  '終了時（0-23）':               'endHour',
+  '終了分（0-59）':               'endMinute',
+  '発行枚数（0=無制限）':          'issueCount',
+  '1人あたり上限（0=無制限）':     'memberAvailMaxCount',
+  '併用可否（0=不可/1=可）':       'combineFlag',
+  '対象商品コード':                'itemCodeList',
+  'クーポン名（省略=自動生成）':    'couponName',
+  'クーポン説明文':                'couponCaption',
+  '公開設定（0=限定/1=公開）':     'displayFlag',
+  'クーポン画像URL':              'couponImageUrl',
+  '利用条件種別（空=指定なし/1=金額/2=個数）':'conditionTypeCode',
+  '利用条件値（金額:円/個数:個）': 'startValue',
+  '会員ランク':                   'memberRank',
+  '購入履歴':                     'purchaseType',
+  '購入履歴期間（月）':           'purchasePeriod',
+  '購入回数下限':                 'purchaseCountMin',
+  '購入回数上限':                 'purchaseCountMax',
+  '性別':                         'gender',
+  '年齢下限':                     'ageLower',
+  '年齢上限':                     'ageUpper',
+  '誕生月':                       'birthMonth',
+  '居住地':                       'prefectures'
+};
+
+// ===== テンプレートDL =====
+function dlCsvTemplate(){
+  const bom='﻿';
+  const head='種別（定額/定率/送料無料）,値引き額または率,開始日（YYYY/M/D）,終了日（YYYY/M/D省略=同日）,開始時（0-23）,開始分（0-59）,終了時（0-23）,終了分（0-59）,発行枚数（0=無制限）,1人あたり上限（0=無制限）,併用可否（0=不可/1=可）,対象商品コード,クーポン名（省略=自動生成）,クーポン説明文,公開設定（0=限定/1=公開）,クーポン画像URL,利用条件種別（空=指定なし/1=金額/2=個数）,利用条件値（金額:円/個数:個）,会員ランク,購入履歴,購入履歴期間（月）,購入回数下限,購入回数上限,性別,年齢下限,年齢上限,誕生月,居住地\n';
+  const samp='定額,15,2026/7/1,2026/7/1,0,0,23,59,0,0,0,,,,1,,,,,,,,,,,,\n';
+  const blob=new Blob([bom+head+samp],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);a.download='hakkoji_csv_template.csv';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+}
+
+// ===== CSVパース =====
+function onCsvFile(input){
+  const f=input.files&&input.files[0];if(!f)return;
+  const reader=new FileReader();
+  reader.onload=e=>{_csvRows=parseCsv_(decodeBuf_(e.target.result));renderCards_();};
+  reader.readAsArrayBuffer(f);
+}
+function decodeBuf_(buf){
+  const bytes=new Uint8Array(buf);
+  const utf8=new TextDecoder('utf-8').decode(bytes);
+  if((utf8.match(/�/g)||[]).length>2){try{return new TextDecoder('shift_jis').decode(bytes);}catch(e){}}
+  return utf8;
+}
+function parseCsv_(text){
+  text=text.replace(/^﻿/,'').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+  const lines=text.split('\n').filter(l=>l.trim()!=='');
+  if(!lines.length)return[];
+  const headers=splitLine_(lines[0]).map(h=>HEADER_MAP[h.trim()]||h.trim());
+  return lines.slice(1).map(line=>{
+    const cols=splitLine_(line),obj={};
+    headers.forEach((h,i)=>{obj[h]=(cols[i]||'').trim();});
+    // デフォルト補完
+    if(obj.purchaseCountMax===undefined||obj.purchaseCountMax==='')obj.purchaseCountMax='0';
+    return obj;
+  });
+}
+function splitLine_(line){
+  const out=[];let cur='',q=false;
+  for(let i=0;i<line.length;i++){
+    const c=line[i];
+    if(q){if(c==='"'){if(line[i+1]==='"'){cur+='"';i++;}else q=false;}else cur+=c;}
+    else{if(c==='"')q=true;else if(c===','){out.push(cur);cur='';}else cur+=c;}
+  }
+  out.push(cur);return out;
+}
+function parseDateFront_(str){
+  const parts=String(str||'').trim().replace(/-/g,'/').split('/');
+  if(parts.length!==3)return new Date(NaN);
+  return new Date(Number(parts[0]),Number(parts[1])-1,Number(parts[2]));
+}
+function toHankaku_(str){
+  return String(str||'').replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0));
+}
+function resolveTypeNum_(v){
+  v=String(v||'').trim();
+  if(v==='定額'||v==='1')return 1;
+  if(v==='定率'||v==='2')return 2;
+  if(v==='送料無料'||v==='3'||v==='4')return 4;
+  return 0;
+}
+
+// ===== バリデーション =====
+function validateCsvRowFront_(r){
+  const dt=String(r.discountType||'').trim();
+  if(!dt)return '種別は必須です（定額/定率/送料無料）';
+  const typeNum=resolveTypeNum_(dt);
+  if(typeNum===0)return '種別が不正です（定額/定率/送料無料）';
+  if(typeNum!==4){
+    const fv=toHankaku_(r.discountFactor);const f=parseInt(fv,10);
+    if(isNaN(f))return typeNum===1?'値引き額は整数で入力してください':'値引き率は整数で入力してください';
+    if(typeNum===1&&(f<1||f>999999999))return '値引き額は1〜999999999の整数で入力してください';
+    if(typeNum===2&&(f<1||f>99))return '値引き率は1〜99の整数で入力してください';
+  }
+  const sd_str=String(r.couponStartDate||'').trim();
+  if(!sd_str)return '開始日は必須です（例: 2026/7/1）';
+  const sd=parseDateFront_(sd_str);
+  if(isNaN(sd.getTime()))return '開始日の形式が不正です（例: 2026/7/1）';
+  const today=new Date();today.setHours(0,0,0,0);
+  if(sd<today)return '開始日は本日以降の日付を指定してください';
+  const ed_str=String(r.couponEndDate||'').trim();
+  const ed=ed_str?parseDateFront_(ed_str):sd;
+  if(ed_str&&isNaN(ed.getTime()))return '終了日の形式が不正です（例: 2026/7/3）';
+  if(ed<sd)return '終了日は開始日以降を指定してください';
+  const sh=parseInt(toHankaku_(r.startHour)||'0',10);
+  const sm=parseInt(toHankaku_(r.startMinute)||'0',10);
+  const eh=parseInt(toHankaku_(r.endHour)||'23',10);
+  const em=parseInt(toHankaku_(r.endMinute)||'59',10);
+  if(isNaN(sh)||sh<0||sh>23)return '開始時は0〜23の整数で入力してください';
+  if(isNaN(sm)||sm<0||sm>59)return '開始分は0〜59の整数で入力してください';
+  if(isNaN(eh)||eh<0||eh>23)return '終了時は0〜23の整数で入力してください';
+  if(isNaN(em)||em<0||em>59)return '終了分は0〜59の整数で入力してください';
+  const startDt=new Date(sd.getFullYear(),sd.getMonth(),sd.getDate(),sh,sm);
+  const endDt=new Date(ed.getFullYear(),ed.getMonth(),ed.getDate(),eh,em);
+  if(startDt>endDt)return '開始日時が終了日時より後になっています';
+  const cn=String(r.couponName||'').trim();
+  if(cn&&cn.length>30)return 'クーポン名は30文字以内で入力してください';
+  const cap=String(r.couponCaption||'').trim();
+  if(cap&&cap.length>100)return 'クーポン説明文は100文字以内で入力してください';
+  const df=String(r.displayFlag||'1').trim();
+  if(!['0','1',''].includes(df))return '公開設定は 0（限定）または 1（公開）で入力してください';
+  const imgUrl=String(r.couponImageUrl||'').trim();
+  if(imgUrl&&!imgUrl.startsWith('https://image.rakuten.co.jp/'))return 'クーポン画像URLは https://image.rakuten.co.jp/ で始まるURLを入力してください';
+  const ctc=String(r.conditionTypeCode||'').trim();
+  const sv=String(r.startValue||'').trim();
+  if(ctc!==''&&!['1','2'].includes(ctc))return '利用条件種別は 1（金額）/ 2（個数）/ 空欄で入力してください';
+  if(ctc!==''&&sv==='')return '利用条件種別を指定した場合は利用条件値も入力してください';
+  if(ctc===''&&sv!=='')return '利用条件値を入力する場合は利用条件種別も指定してください';
+  if(ctc!==''&&sv!==''){const svNum=parseInt(toHankaku_(sv),10);if(isNaN(svNum)||svNum<1||svNum>999999999)return '利用条件値は1〜999999999の整数で入力してください';}
+  // 獲得条件
+  const memberRank_=String(r.memberRank||'').trim();
+  const purchaseType_=String(r.purchaseType||'').trim();
+  const purchasePeriod_=String(r.purchasePeriod||'').trim();
+  const pcMinStr_=String(r.purchaseCountMin||'').trim();
+  const pcMaxStr_=String(r.purchaseCountMax||'').trim();
+  const gender_=String(r.gender||'').trim();
+  const ageLowerStr_=String(r.ageLower||'').trim();
+  const ageUpperStr_=String(r.ageUpper||'').trim();
+  const birthMonthStr_=String(r.birthMonth||'').trim();
+  const prefectures_=String(r.prefectures||'').trim();
+  if(memberRank_!==''){
+    const hasOther=purchaseType_!==''||gender_!==''||
+      (ageLowerStr_!==''&&ageLowerStr_!=='0')||(ageUpperStr_!==''&&ageUpperStr_!=='0')||
+      birthMonthStr_!==''||prefectures_!=='';
+    if(hasOther)return '会員ランク指定時は他の獲得条件を指定できません';
+  }
+  if(purchaseType_==='リピーター'){
+    if(!['1','3','6','12','24'].includes(purchasePeriod_))return 'リピーター指定時は購入履歴期間（1/3/6/12/24ヶ月）を選択してください';
+    const pcMin=parseInt(pcMinStr_,10);
+    if(isNaN(pcMin)||pcMin<1||pcMin>10)return 'リピーター指定時は購入回数下限を1〜10で入力してください';
+    const pcMax=parseInt(pcMaxStr_,10);
+    if(isNaN(pcMax)||pcMax<0||pcMax>10)return 'リピーター指定時は購入回数上限を 0（上限なし）または1〜10で入力してください';
+    if(pcMax!==0&&pcMax<pcMin)return '購入回数の上限は下限以上を指定してください';
+  }
+  if(ageLowerStr_!==''||ageUpperStr_!==''){
+    const ageLo=ageLowerStr_===''?0:parseInt(ageLowerStr_,10);
+    const ageHi=ageUpperStr_===''?0:parseInt(ageUpperStr_,10);
+    if(isNaN(ageLo)||(ageLo!==0&&(ageLo<10||ageLo>100)))return '年齢は10〜100で指定してください';
+    if(isNaN(ageHi)||(ageHi!==0&&(ageHi<10||ageHi>100)))return '年齢は10〜100で指定してください';
+    if(ageLo>0&&ageHi>0&&ageLo>ageHi)return '年齢下限は上限以下を指定してください';
+  }
+  if(birthMonthStr_!==''){const bm=parseInt(birthMonthStr_,10);if(isNaN(bm)||bm<1||bm>12)return '誕生月は1〜12で指定してください';}
+  if(prefectures_!==''){
+    const PREF_NAMES=new Set(['北海道','青森','岩手','宮城','秋田','山形','福島','茨城','栃木','群馬','埼玉','千葉','東京','神奈川','新潟','富山','石川','福井','山梨','長野','岐阜','静岡','愛知','三重','滋賀','京都','大阪','兵庫','奈良','和歌山','鳥取','島根','岡山','広島','山口','徳島','香川','愛媛','高知','福岡','佐賀','長崎','熊本','大分','宮崎','鹿児島','沖縄']);
+    const unknown=prefectures_.split(',').map(p=>p.trim().replace(/[都道府県]$/,'')).filter(p=>p&&!PREF_NAMES.has(p));
+    if(unknown.length>0)return `居住地に不明な都道府県があります：${unknown.join('、')}`;
+  }
+  return null;
+}
+function warnCsvRowFront_(r){
+  const item=String(r.itemCodeList||'').trim();if(!item)return null;
+  const rank=String(r.memberRank||'').trim();if(rank)return null;
+  const cnt=parseInt(toHankaku_(String(r.issueCount||'0')),10)||0;
+  if(cnt>0&&cnt<=1000)return null;
+  const sd=parseDateFront_(String(r.couponStartDate||''));
+  const edStr=String(r.couponEndDate||'').trim();
+  const ed=edStr?parseDateFront_(edStr):sd;
+  if(!isNaN(sd.getTime())&&!isNaN(ed.getTime())&&(ed-sd)/(86400000)<=14)return null;
+  return '対象商品指定時は14日以内/1000枚以下/会員ランク指定のいずれかが必要です';
+}
+
+// ===== HTML ユーティリティ =====
+function esc_(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function escAttr_(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// ===== セレクト生成 =====
+function makeHourSelect_(val,onchange){
+  let h=`<select style="width:56px" onchange="${onchange}">`;
+  for(let n=0;n<24;n++)h+=`<option value="${n}"${String(val)===String(n)?' selected':''}>${n}</option>`;
+  return h+'</select>';
+}
+function makeMinuteSelect_(val,onchange){
+  let h=`<select style="width:60px" onchange="${onchange}">`;
+  for(let n=0;n<60;n++){const mm=('0'+n).slice(-2);h+=`<option value="${n}"${String(val)===String(n)?' selected':''}>${mm}</option>`;}
+  return h+'</select>';
+}
+
+// ===== カード構築 =====
+function buildCard_(r,i){
+  const typeNum=resolveTypeNum_(r.discountType||'定額');
+  const isFree=typeNum===4;
+  const rankVal=String(r.memberRank||'').trim();
+  const hasRank=rankVal!=='';
+  const selRanks=rankVal?rankVal.split(',').map(s=>s.trim()).filter(Boolean):[];
+  const ptypeVal=String(r.purchaseType||'').trim();
+  const isRep=ptypeVal==='リピーター';
+  const selPrefs=(String(r.prefectures||'').trim()).split(',').map(s=>s.trim()).filter(Boolean);
+  const ctcVal=String(r.conditionTypeCode||'').trim();
+  const dispVal=r.displayFlag==='0'?'0':'1';
+  const combVal=r.combineFlag==='1'?'1':'0';
+
+  // 判定
+  const err=validateCsvRowFront_(r);
+  const warn=!err?warnCsvRowFront_(r):null;
+  let jcls,jtxt;
+  if(hasRank&&!err){jcls='j-rank';jtxt='✅ 会員ランク指定中（他条件はロック）— 設定OK';}
+  else if(err){jcls='j-ng';jtxt='❌ NG: '+esc_(err);}
+  else if(warn){jcls='j-warn';jtxt='⚠ 警告: '+esc_(warn);}
+  else{jcls='j-ok';jtxt='✅ 設定OK（このまま発行できます）';}
+
+  // 割引種別ラジオ
+  const typeRadios=['定額','定率','送料無料'].map(v=>
+    `<label><input type="radio" name="dt_${i}" value="${v}"${(r.discountType||'定額')===v?' checked':''} onchange="_csvRows[${i}].discountType=this.value;onTypeChange_(${i})">${v==='定額'?'定額（円OFF）':v==='定率'?'定率（%OFF）':'送料無料'}</label>`
+  ).join('');
+  const dfUnit=typeNum===2?'（%）':'（円）';
+
+  // 時刻
+  const shS=makeHourSelect_(r.startHour||'0',`_csvRows[${i}].startHour=this.value;updateCardBanner_(${i})`);
+  const smS=makeMinuteSelect_(r.startMinute||'0',`_csvRows[${i}].startMinute=this.value;updateCardBanner_(${i})`);
+  const ehS=makeHourSelect_(r.endHour||'23',`_csvRows[${i}].endHour=this.value;updateCardBanner_(${i})`);
+  const emS=makeMinuteSelect_(r.endMinute||'59',`_csvRows[${i}].endMinute=this.value;updateCardBanner_(${i})`);
+
+  // 公開・併用・利用条件
+  const dispR=['公開','限定公開'].map((l,n)=>{const v=n===0?'1':'0';return`<label><input type="radio" name="disp_${i}" value="${v}"${dispVal===v?' checked':''} onchange="_csvRows[${i}].displayFlag=this.value;updateCardBanner_(${i})">${l}</label>`;}).join('');
+  const combR=['併用不可','併用可'].map((l,n)=>{const v=String(n);return`<label><input type="radio" name="comb_${i}" value="${v}"${combVal===v?' checked':''} onchange="_csvRows[${i}].combineFlag=this.value;updateCardBanner_(${i})">${l}</label>`;}).join('');
+  const ctcR=[['','指定しない'],['1','金額条件（円以上）'],['2','個数条件（個以上）']].map(([v,l])=>
+    `<label><input type="radio" name="ctc_${i}" value="${v}"${ctcVal===v?' checked':''} onchange="_csvRows[${i}].conditionTypeCode=this.value;onCondTypeChange_(${i})">${l}</label>`
+  ).join('');
+
+  // 会員ランクチェックボックス
+  const RANKS=['レギュラー','シルバー','ゴールド','プラチナ','ダイヤモンド'];
+  const rankCBs=RANKS.map(rk=>
+    `<label><input type="checkbox" class="rankCb_${i}" value="${rk}"${selRanks.includes(rk)?' checked':''} onchange="onRankChange_(${i})">${rk}</label>`
+  ).join('');
+
+  // 購入履歴ラジオ
+  const ptypeR=[['','指定しない'],['新規','新規（履歴なし）'],['リピーター','リピーター（履歴あり）']].map(([v,l])=>
+    `<label><input type="radio" name="ptype_${i}" value="${v}"${ptypeVal===v?' checked':''}${hasRank?' disabled':''} onchange="_csvRows[${i}].purchaseType=this.value;onPurchaseTypeChange_(${i})">${l}</label>`
+  ).join('');
+
+  // リピーターサブフィールド
+  const pcmaxVal=r.purchaseCountMax!==undefined&&r.purchaseCountMax!==''?r.purchaseCountMax:'0';
+  const periodOpts=['1','3','6','12','24'].map(v=>`<option value="${v}"${r.purchasePeriod===v?' selected':''}>${v}ヶ月</option>`).join('');
+  const pcminOpts=[1,2,3,4,5,6,7,8,9,10].map(v=>`<option value="${v}"${String(r.purchaseCountMin)===String(v)?' selected':''}>${v}回</option>`).join('');
+  const pcmaxOpts=`<option value="0"${pcmaxVal==='0'?' selected':''}>上限なし</option>`+[1,2,3,4,5,6,7,8,9,10].map(v=>`<option value="${v}"${String(pcmaxVal)===String(v)?' selected':''}>${v}回</option>`).join('');
+  const repDisp=(isRep&&!hasRank)?'':'display:none';
+
+  // 性別
+  const genderR=[['','指定しない'],['男性','男性'],['女性','女性']].map(([v,l])=>
+    `<label><input type="radio" name="gend_${i}" value="${v}"${(r.gender||'')===v?' checked':''}${hasRank?' disabled':''} onchange="_csvRows[${i}].gender=this.value;updateCardBanner_(${i})">${l}</label>`
+  ).join('');
+
+  // 誕生月
+  const birthOpts=`<option value=""${!r.birthMonth?' selected':''}>指定しない</option>`
+    +[1,2,3,4,5,6,7,8,9,10,11,12].map(v=>`<option value="${v}"${String(r.birthMonth||'')===String(v)?' selected':''}>${v}月</option>`).join('');
+
+  // 居住地チェックボックス
+  const prefCBs=PREF_REGIONS.map(rg=>
+    `<div class="pref-region"><div class="pref-rgname">${esc_(rg.name)}</div><div class="pref-row cg">${
+      rg.prefs.map(p=>`<label><input type="checkbox" class="pref_${i}" value="${p}"${selPrefs.includes(p)?' checked':''}${hasRank?' disabled':''} onchange="onPrefChange_(${i})">${p}</label>`).join('')
+    }</div></div>`
+  ).join('');
+
+  return`<div class="coupon-card" id="card_${i}">
+<div class="card-header">
+  <span class="card-title">クーポン ${i+1}</span>
+  <button class="card-del" onclick="removeRow_(${i})">✕ 削除</button>
+</div>
+
+<div class="card-section">
+  <div class="sec-title">基本設定</div>
+  <div class="field"><span class="flabel">割引種別</span><div class="rg">${typeRadios}</div></div>
+  <div class="field" id="dfField_${i}"${isFree?' style="display:none"':''}>
+    <span class="flabel">値引き額/率 ${dfUnit}</span>
+    <input type="text" id="df_${i}" value="${escAttr_(r.discountFactor||'')}" placeholder="例: 500" maxlength="10" oninput="_csvRows[${i}].discountFactor=this.value;updateCardBanner_(${i})">
+    <div class="hint">送料無料のときは空欄でOK</div>
+  </div>
+  <div class="field"><span class="flabel">クーポン名</span>
+    <input type="text" value="${escAttr_(r.couponName||'')}" placeholder="省略=自動生成" maxlength="30" oninput="_csvRows[${i}].couponName=this.value;updateCardBanner_(${i})">
+    <div class="hint">空欄なら「M/D SALE！クーポン」形式で自動生成（30文字以内）</div>
+  </div>
+  <div class="field"><span class="flabel">クーポン説明文</span>
+    <input type="text" value="${escAttr_(r.couponCaption||'')}" placeholder="省略可（100文字以内）" maxlength="100" oninput="_csvRows[${i}].couponCaption=this.value;updateCardBanner_(${i})">
+  </div>
+</div>
+
+<div class="card-section">
+  <div class="sec-title">期間</div>
+  <div class="two-col">
+    <div class="field"><span class="flabel">開始日</span>
+      <input type="text" value="${escAttr_(r.couponStartDate||'')}" placeholder="2026/7/1" oninput="_csvRows[${i}].couponStartDate=this.value;updateCardBanner_(${i})">
+      <div class="hint">YYYY/M/D・本日以降</div>
+    </div>
+    <div class="field"><span class="flabel">終了日</span>
+      <input type="text" value="${escAttr_(r.couponEndDate||'')}" placeholder="省略=開始日と同日" oninput="_csvRows[${i}].couponEndDate=this.value;updateCardBanner_(${i})">
+      <div class="hint">省略すると開始日と同じ</div>
+    </div>
+  </div>
+  <div class="two-col">
+    <div class="field"><span class="flabel">開始時刻</span><div class="time-row">${shS}時 ${smS}分</div></div>
+    <div class="field"><span class="flabel">終了時刻</span><div class="time-row">${ehS}時 ${emS}分</div></div>
+  </div>
+  <div class="hint" style="margin-top:-4px">省略すると 0:00〜23:59</div>
+</div>
+
+<div class="card-section">
+  <div class="sec-title">公開・詳細設定</div>
+  <div class="field"><span class="flabel">公開設定</span><div class="rg">${dispR}</div></div>
+  <div class="field"><span class="flabel">クーポン画像URL</span>
+    <input type="text" value="${escAttr_(r.couponImageUrl||'')}" placeholder="https://image.rakuten.co.jp/..." oninput="_csvRows[${i}].couponImageUrl=this.value;updateCardBanner_(${i})">
+    <div class="hint">https://image.rakuten.co.jp/ で始まるURLのみ・省略可</div>
+  </div>
+  <div class="two-col">
+    <div class="field"><span class="flabel">発行枚数</span>
+      <input type="text" value="${escAttr_(r.issueCount||'0')}" oninput="_csvRows[${i}].issueCount=this.value;updateCardBanner_(${i})">
+      <div class="hint">0=無制限</div>
+    </div>
+    <div class="field"><span class="flabel">1人あたり上限</span>
+      <input type="text" value="${escAttr_(r.memberAvailMaxCount||'0')}" oninput="_csvRows[${i}].memberAvailMaxCount=this.value;updateCardBanner_(${i})">
+      <div class="hint">0=無制限</div>
+    </div>
+  </div>
+  <div class="field"><span class="flabel">他クーポンとの併用</span><div class="rg">${combR}</div></div>
+  <div class="field"><span class="flabel">利用条件</span>
+    <div class="rg">${ctcR}</div>
+    <div id="svField_${i}" style="margin-top:6px;${ctcVal===''?'display:none':''}">
+      <input type="text" id="sv_${i}" value="${escAttr_(r.startValue||'')}" placeholder="${ctcVal==='2'?'例: 3（個以上）':'例: 1000（円以上）'}" oninput="_csvRows[${i}].startValue=this.value;updateCardBanner_(${i})">
+    </div>
+    <div class="hint">金額条件: ○円以上購入で適用 / 個数条件: ○個以上購入で適用</div>
+  </div>
+  <div class="field"><span class="flabel">対象商品</span>
+    <input type="text" value="${escAttr_(r.itemCodeList||'')}" placeholder="空欄=全品 / 商品管理番号をカンマ区切り" oninput="_csvRows[${i}].itemCodeList=this.value;updateCardBanner_(${i})">
+    <div class="hint">商品管理番号をカンマ区切りで入力・空欄=全品対象</div>
+  </div>
+</div>
+
+<div class="card-section">
+  <div class="sec-title">獲得条件（誰に配るか）</div>
+  <div class="field"><span class="flabel">会員ランク（複数選択可）</span>
+    <div class="cg">${rankCBs}</div>
+    <div class="hint">どれも選ばなければ指定なし。ランクを選ぶと下の条件は使えません（楽天の仕様）。</div>
+  </div>
+  <div class="lock-grp" id="lockGrp_${i}" style="${hasRank?'opacity:0.45':''}">
+    <div class="lock-banner" id="lockBnr_${i}" style="${hasRank?'':'display:none'}">
+      🔒 会員ランク指定中のため、以下の条件はロックされています
+    </div>
+    <div class="field"><span class="flabel">購入履歴</span>
+      <div class="rg">${ptypeR}</div>
+      <div id="repSub_${i}" class="rep-sub" style="${repDisp}">
+        <div class="two-col">
+          <div class="field"><span class="flabel" style="font-weight:400;color:#777">購入履歴期間</span>
+            <select${hasRank?' disabled':''} onchange="_csvRows[${i}].purchasePeriod=this.value;updateCardBanner_(${i})">
+              <option value="">選択してください</option>${periodOpts}
+            </select>
+          </div>
+          <div class="field"><span class="flabel" style="font-weight:400;color:#777">購入回数 下限</span>
+            <select${hasRank?' disabled':''} onchange="_csvRows[${i}].purchaseCountMin=this.value;updateCardBanner_(${i})">
+              <option value="">選択してください</option>${pcminOpts}
+            </select>
+          </div>
+        </div>
+        <div class="field"><span class="flabel" style="font-weight:400;color:#777">購入回数 上限</span>
+          <select${hasRank?' disabled':''} onchange="_csvRows[${i}].purchaseCountMax=this.value;updateCardBanner_(${i})">
+            ${pcmaxOpts}
+          </select>
+          <div class="hint">「上限なし」= 下限以上すべて対象</div>
+        </div>
       </div>
-      <div style="margin-bottom:20px;">
-        <label style="display:block; font-size:13px; margin-bottom:4px;">パスワード</label>
-        <input id="gatePw" type="password" placeholder="パスワード"
-               style="width:100%; padding:8px; box-sizing:border-box; border:1px solid #ccc; border-radius:4px;">
+    </div>
+    <div class="field"><span class="flabel">性別</span><div class="rg">${genderR}</div></div>
+    <div class="field"><span class="flabel">年齢</span>
+      <div class="two-col">
+        <div><span style="font-size:11px;color:#777">下限</span>
+          <input type="text" id="agelo_${i}" value="${escAttr_(r.ageLower||'')}" placeholder="10〜100"${hasRank?' disabled':''} oninput="_csvRows[${i}].ageLower=this.value;updateCardBanner_(${i})">
+        </div>
+        <div><span style="font-size:11px;color:#777">上限</span>
+          <input type="text" id="agehi_${i}" value="${escAttr_(r.ageUpper||'')}" placeholder="10〜100"${hasRank?' disabled':''} oninput="_csvRows[${i}].ageUpper=this.value;updateCardBanner_(${i})">
+        </div>
       </div>
-      <div id="gateError" style="color:red; font-size:12px; margin-bottom:12px; min-height:16px;"></div>
-      <button id="gateLoginBtn" onclick="gateLogin_()"
-              style="width:100%; padding:12px; background:#2196F3; color:#fff;
-                     border:none; border-radius:6px; font-size:15px; cursor:pointer;">
-        ログイン
-      </button>
+      <div class="hint">10〜100の整数・空欄=指定なし（両方指定する場合は下限≤上限）</div>
+    </div>
+    <div class="field"><span class="flabel">誕生月</span>
+      <select id="birth_${i}"${hasRank?' disabled':''} style="width:auto" onchange="_csvRows[${i}].birthMonth=this.value;updateCardBanner_(${i})">
+        ${birthOpts}
+      </select>
+    </div>
+    <div class="field"><span class="flabel">居住地（複数選択可）</span>
+      ${prefCBs}
+      <div class="hint">何も選ばなければ全国（指定なし）。都道府県名で指定してください。</div>
     </div>
   </div>
-
-  <!-- ログアウトボタン -->
-  <button onclick="sessionStorage.removeItem('auth'); location.reload();"
-          style="position:fixed; top:10px; right:10px; font-size:12px;
-                 padding:4px 10px; background:#888; color:#fff; border:none;
-                 border-radius:4px; cursor:pointer; z-index:1000;">
-    ログアウト
-  </button>
-
-  <!-- 戻るリンク -->
-  <div style="padding:8px 0 16px;">
-    <a href="/" style="font-size:13px; color:#666;">← 設定ページに戻る</a>
-  </div>
-
-  <!-- CSVページ本体 -->
-  <div style="max-width:1200px; margin:0 auto; padding:0 16px 32px;">
-    <h2 style="margin-bottom:8px;">CSVで即時発行（setting準拠）</h2>
-    <p style="font-size:13px; color:#555; line-height:1.7;">
-      ※ <strong>種別</strong>: 定額 / 定率 / 送料無料（送料無料は値引き額/率不要）<br>
-      ※ <strong>終了日</strong> 省略時は開始日と同日。開始時・終了時刻を指定可（省略=0:00〜23:59）<br>
-      ※ <strong>slot 列は不要</strong>（GAS自動採番）。日付形式: <code>2026/7/1</code>（YYYY/M/D）<br>
-      ※ 1回5件まで。テンプレートをダウンロードして列順を変えないでください。<br>
-      ※ クーポン名省略時は「M/D-M/D SALE！クーポン」形式で自動生成（30文字以内）<br>
-      ※ クーポン画像URLは https://image.rakuten.co.jp/ で始まるURLのみ<br>
-      ※ 利用条件種別: 1=金額条件（円以上）/ 2=個数条件（個以上）/ 空欄=指定しない
-    </p>
-    <p><a href="javascript:void(0)" onclick="dlCsvTemplate()">▼ テンプレートCSVをダウンロード</a></p>
-    <div style="margin:8px 0;">
-      <input type="file" accept=".csv" id="csvFileInput" onchange="onCsvFile(this)">
-    </div>
-    <div style="margin:8px 0;">
-      <button id="addRowBtn" onclick="addRow_()"
-              style="padding:6px 14px; background:#27ae60; color:#fff; border:none; border-radius:4px; cursor:pointer;">
-        ＋ 行を追加（残り5件）
-      </button>
-    </div>
-    <div id="csvPreview" style="overflow-x:auto; margin:8px 0;"></div>
-    <p style="font-size:12px; margin:4px 0;"><span id="csvPreviewCount">発行可能: 0 / NG: 0</span></p>
-    <div style="display:flex; gap:8px; margin-top:8px;">
-      <button id="csvIssueBtn" onclick="execCsvIssue()" disabled
-              style="padding:10px 20px; background:#e67e22; color:#fff; border:none; border-radius:4px; cursor:pointer;">
-        発行する
-      </button>
-    </div>
-    <div id="csvResult" style="margin-top:12px;"></div>
-  </div>
-
-  <script>
-    // ===== ログインゲート (csv.html版: 認証成功後はゲートを閉じるだけ) =====
-    (function initGate() {
-      var stored = sessionStorage.getItem('auth');
-      if (stored) {
-        var gate = document.getElementById('loginGate');
-        if (gate) gate.style.display = 'none';
-      }
-      document.addEventListener('keydown', function(e) {
-        var gate = document.getElementById('loginGate');
-        if (gate && gate.style.display !== 'none' && e.key === 'Enter') gateLogin_();
-      });
-    })();
-
-    async function gateLogin_() {
-      var userId = document.getElementById('gateUserId').value.trim();
-      var pw     = document.getElementById('gatePw').value.trim();
-      var errEl  = document.getElementById('gateError');
-      var btn    = document.getElementById('gateLoginBtn');
-      if (!userId || !pw) { errEl.textContent = 'IDとパスワードを入力してください'; return; }
-      btn.disabled = true; btn.textContent = '認証中...'; errEl.textContent = '';
-      try {
-        await callApi('getUserSettings', { userId, pw });
-        sessionStorage.setItem('auth', JSON.stringify({ userId, pw }));
-        document.getElementById('loginGate').style.display = 'none';
-      } catch(e) {
-        errEl.textContent = '認証エラー: IDまたはパスワードが正しくありません';
-        btn.disabled = false; btn.textContent = 'ログイン';
-      }
-    }
-
-    // ===== CSV即時発行 =====
-    let _csvRows = [];
-
-    const HEADER_MAP = {
-      '種別（定額/定率/送料無料）':     'discountType',
-      '値引き額または率':              'discountFactor',
-      '開始日（YYYY/M/D）':           'couponStartDate',
-      '終了日（YYYY/M/D省略=同日）':   'couponEndDate',
-      '開始時（0-23）':               'startHour',
-      '開始分（0-59）':               'startMinute',
-      '終了時（0-23）':               'endHour',
-      '終了分（0-59）':               'endMinute',
-      '発行枚数（0=無制限）':          'issueCount',
-      '1人あたり上限（0=無制限）':     'memberAvailMaxCount',
-      '併用可否（0=不可/1=可）':       'combineFlag',
-      '対象商品コード':                'itemCodeList',
-      'クーポン名（省略=自動生成）':           'couponName',
-      'クーポン説明文':                        'couponCaption',
-      '公開設定（0=限定/1=公開）':             'displayFlag',
-      'クーポン画像URL':                       'couponImageUrl',
-      '利用条件種別（空=指定なし/1=金額/2=個数）': 'conditionTypeCode',
-      '利用条件値（金額:円/個数:個）':          'startValue',
-      '会員ランク':                             'memberRank',
-      '購入履歴':                              'purchaseType',
-      '購入履歴期間（月）':                    'purchasePeriod',
-      '購入回数下限':                          'purchaseCountMin',
-      '購入回数上限':                          'purchaseCountMax',
-      '性別':                                  'gender',
-      '年齢下限':                              'ageLower',
-      '年齢上限':                              'ageUpper',
-      '誕生月':                                'birthMonth',
-      '居住地':                                'prefectures'
-    };
-
-    function dlCsvTemplate() {
-      const bom  = '﻿';
-      const head = '種別（定額/定率/送料無料）,値引き額または率,開始日（YYYY/M/D）,終了日（YYYY/M/D省略=同日）,開始時（0-23）,開始分（0-59）,終了時（0-23）,終了分（0-59）,発行枚数（0=無制限）,1人あたり上限（0=無制限）,併用可否（0=不可/1=可）,対象商品コード,クーポン名（省略=自動生成）,クーポン説明文,公開設定（0=限定/1=公開）,クーポン画像URL,利用条件種別（空=指定なし/1=金額/2=個数）,利用条件値（金額:円/個数:個）,会員ランク,購入履歴,購入履歴期間（月）,購入回数下限,購入回数上限,性別,年齢下限,年齢上限,誕生月,居住地\n';
-      const samp = '定額,15,2026/7/1,2026/7/1,0,0,23,59,0,0,0,,,,1,,,,,,,,,,,,\n';
-      const blob = new Blob([bom + head + samp], { type: 'text/csv;charset=utf-8;' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob); a.download = 'hakkoji_csv_template.csv';
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    }
-
-    function onCsvFile(input) {
-      const f = input.files && input.files[0]; if (!f) return;
-      const reader = new FileReader();
-      reader.onload = e => {
-        _csvRows = parseCsv_(decodeBuf_(e.target.result));
-        renderPreview_();
-      };
-      reader.readAsArrayBuffer(f);
-    }
-
-    function decodeBuf_(buf) {
-      const bytes = new Uint8Array(buf);
-      const utf8  = new TextDecoder('utf-8').decode(bytes);
-      if ((utf8.match(/�/g) || []).length > 2) {
-        try { return new TextDecoder('shift_jis').decode(bytes); } catch (e) {}
-      }
-      return utf8;
-    }
-
-    function parseCsv_(text) {
-      text = text.replace(/^﻿/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-      const lines = text.split('\n').filter(l => l.trim() !== '');
-      if (!lines.length) return [];
-      const headers = splitLine_(lines[0]).map(h => HEADER_MAP[h.trim()] || h.trim());
-      return lines.slice(1).map(line => {
-        const cols = splitLine_(line), obj = {};
-        headers.forEach((h, i) => { obj[h] = (cols[i] || '').trim(); });
-        return obj;
-      });
-    }
-
-    function splitLine_(line) {
-      const out = []; let cur = '', q = false;
-      for (let i = 0; i < line.length; i++) {
-        const c = line[i];
-        if (q) { if (c === '"') { if (line[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += c; }
-        else   { if (c === '"') q = true; else if (c === ',') { out.push(cur); cur = ''; } else cur += c; }
-      }
-      out.push(cur); return out;
-    }
-
-    function parseDateFront_(str) {
-      const parts = String(str || '').trim().replace(/-/g, '/').split('/');
-      if (parts.length !== 3) return new Date(NaN);
-      return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-    }
-
-    function toHankaku_(str) {
-      return String(str || '').replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
-    }
-
-    function resolveTypeNum_(v) {
-      v = String(v || '').trim();
-      if (v === '定額'   || v === '1') return 1;
-      if (v === '定率'   || v === '2') return 2;
-      if (v === '送料無料' || v === '3' || v === '4') return 4;
-      return 0;
-    }
-
-    function validateCsvRowFront_(r) {
-      const dt = String(r.discountType || '').trim();
-      if (!dt) return '種別は必須です（定額/定率/送料無料）';
-      const typeNum = resolveTypeNum_(dt);
-      if (typeNum === 0) return '種別が不正です（定額/定率/送料無料）';
-
-      if (typeNum !== 4) {
-        const fv = toHankaku_(r.discountFactor);
-        const f  = parseInt(fv, 10);
-        if (isNaN(f)) return typeNum === 1 ? '値引き額は整数で入力してください' : '値引き率は整数で入力してください';
-        if (typeNum === 1 && (f < 1 || f > 999999999)) return '値引き額は1〜999999999の整数で入力してください';
-        if (typeNum === 2 && (f < 1 || f > 99))        return '値引き率は1〜99の整数で入力してください';
-      }
-
-      const sd_str = String(r.couponStartDate || '').trim();
-      if (!sd_str) return '開始日は必須です（例: 2026/7/1）';
-      const sd = parseDateFront_(sd_str);
-      if (isNaN(sd.getTime())) return '開始日の形式が不正です（例: 2026/7/1）';
-      const today = new Date(); today.setHours(0, 0, 0, 0);
-      if (sd < today) return '開始日は本日以降の日付を指定してください';
-
-      const ed_str = String(r.couponEndDate || '').trim();
-      const ed = ed_str ? parseDateFront_(ed_str) : sd;
-      if (ed_str && isNaN(ed.getTime())) return '終了日の形式が不正です（例: 2026/7/3）';
-      if (ed < sd) return '終了日は開始日以降を指定してください';
-
-      const sh = parseInt(toHankaku_(r.startHour)   || '0',  10);
-      const sm = parseInt(toHankaku_(r.startMinute) || '0',  10);
-      const eh = parseInt(toHankaku_(r.endHour)     || '23', 10);
-      const em = parseInt(toHankaku_(r.endMinute)   || '59', 10);
-      if (isNaN(sh) || sh < 0 || sh > 23) return '開始時は0〜23の整数で入力してください';
-      if (isNaN(sm) || sm < 0 || sm > 59) return '開始分は0〜59の整数で入力してください';
-      if (isNaN(eh) || eh < 0 || eh > 23) return '終了時は0〜23の整数で入力してください';
-      if (isNaN(em) || em < 0 || em > 59) return '終了分は0〜59の整数で入力してください';
-
-      const startDt = new Date(sd.getFullYear(), sd.getMonth(), sd.getDate(), sh, sm);
-      const endDt   = new Date(ed.getFullYear(), ed.getMonth(), ed.getDate(), eh, em);
-      if (startDt > endDt) return '開始日時が終了日時より後になっています';
-
-      const cn = String(r.couponName || '').trim();
-      if (cn && cn.length > 30) return 'クーポン名は30文字以内で入力してください';
-
-      const cap = String(r.couponCaption || '').trim();
-      if (cap && cap.length > 100) return 'クーポン説明文は100文字以内で入力してください';
-
-      const df = String(r.displayFlag || '1').trim();
-      if (!['0', '1', ''].includes(df)) return '公開設定は 0（限定）または 1（公開）で入力してください';
-
-      const imgUrl = String(r.couponImageUrl || '').trim();
-      if (imgUrl && !imgUrl.startsWith('https://image.rakuten.co.jp/')) {
-        return 'クーポン画像URLは https://image.rakuten.co.jp/ で始まるURLを入力してください';
-      }
-
-      const ctc = String(r.conditionTypeCode || '').trim();
-      const sv  = String(r.startValue || '').trim();
-      if (ctc !== '' && !['1', '2'].includes(ctc)) return '利用条件種別は 1（金額）/ 2（個数）/ 空欄（指定しない）で入力してください';
-      if (ctc !== '' && sv === '') return '利用条件種別を指定した場合は利用条件値も入力してください';
-      if (ctc === '' && sv !== '') return '利用条件値を入力する場合は利用条件種別も指定してください';
-      if (ctc !== '' && sv !== '') {
-        const svNum = parseInt(toHankaku_(sv), 10);
-        if (isNaN(svNum) || svNum < 1 || svNum > 999999999) return '利用条件値は1〜999999999の整数で入力してください';
-      }
-
-      // --- 獲得条件バリデーション ---
-      const memberRank_     = String(r.memberRank    || '').trim();
-      const purchaseType_   = String(r.purchaseType  || '').trim();
-      const purchasePeriod_ = String(r.purchasePeriod|| '').trim();
-      const pcMinStr_       = String(r.purchaseCountMin || '').trim();
-      const pcMaxStr_       = String(r.purchaseCountMax || '').trim();
-      const gender_         = String(r.gender         || '').trim();
-      const ageLowerStr_    = String(r.ageLower       || '').trim();
-      const ageUpperStr_    = String(r.ageUpper       || '').trim();
-      const birthMonthStr_  = String(r.birthMonth     || '').trim();
-      const prefectures_    = String(r.prefectures    || '').trim();
-
-      // 制約1: 会員ランク排他
-      if (memberRank_ !== '') {
-        const hasOther = purchaseType_ !== '' || gender_ !== '' ||
-          (ageLowerStr_ !== '' && ageLowerStr_ !== '0') ||
-          (ageUpperStr_ !== '' && ageUpperStr_ !== '0') ||
-          birthMonthStr_ !== '' || prefectures_ !== '';
-        if (hasOther) return '会員ランク指定時は他の獲得条件を指定できません';
-      }
-
-      // 制約2: リピーター時
-      if (purchaseType_ === 'リピーター') {
-        if (!['1','3','6','12','24'].includes(purchasePeriod_))
-          return 'リピーター指定時は購入履歴期間（1/3/6/12/24ヶ月）を選択してください';
-        const pcMin = parseInt(pcMinStr_, 10);
-        if (isNaN(pcMin) || pcMin < 1 || pcMin > 10)
-          return 'リピーター指定時は購入回数下限を1〜10で入力してください';
-        const pcMax = parseInt(pcMaxStr_, 10);
-        if (isNaN(pcMax) || pcMax < 0 || pcMax > 10)
-          return 'リピーター指定時は購入回数上限を 0（上限なし）または1〜10で入力してください';
-        if (pcMax !== 0 && pcMax < pcMin)
-          return '購入回数の上限は下限以上を指定してください';
-      }
-
-      // 制約3: 年齢
-      if (ageLowerStr_ !== '' || ageUpperStr_ !== '') {
-        const ageLo = ageLowerStr_ === '' ? 0 : parseInt(ageLowerStr_, 10);
-        const ageHi = ageUpperStr_ === '' ? 0 : parseInt(ageUpperStr_, 10);
-        if (isNaN(ageLo) || (ageLo !== 0 && (ageLo < 10 || ageLo > 100))) return '年齢は10〜100で指定してください';
-        if (isNaN(ageHi) || (ageHi !== 0 && (ageHi < 10 || ageHi > 100))) return '年齢は10〜100で指定してください';
-        if (ageLo > 0 && ageHi > 0 && ageLo > ageHi) return '年齢下限は上限以下を指定してください';
-      }
-
-      // 制約4: 誕生月
-      if (birthMonthStr_ !== '') {
-        const bm = parseInt(birthMonthStr_, 10);
-        if (isNaN(bm) || bm < 1 || bm > 12) return '誕生月は1〜12で指定してください';
-      }
-
-      // 制約5: 居住地
-      if (prefectures_ !== '') {
-        const PREF_NAMES = new Set(['北海道','青森','岩手','宮城','秋田','山形','福島','茨城','栃木','群馬',
-          '埼玉','千葉','東京','神奈川','新潟','富山','石川','福井','山梨','長野',
-          '岐阜','静岡','愛知','三重','滋賀','京都','大阪','兵庫','奈良','和歌山',
-          '鳥取','島根','岡山','広島','山口','徳島','香川','愛媛','高知','福岡',
-          '佐賀','長崎','熊本','大分','宮崎','鹿児島','沖縄']);
-        const unknown = prefectures_.split(',')
-          .map(p => p.trim().replace(/[都道府県]$/, ''))
-          .filter(p => p && !PREF_NAMES.has(p));
-        if (unknown.length > 0) return `居住地に不明な都道府県があります：${unknown.join('、')}`;
-      }
-
-      return null;
-    }
-
-    // 制約6: 警告のみ（発行はブロックしない）
-    function warnCsvRowFront_(r) {
-      const itemCodeList_ = String(r.itemCodeList || '').trim();
-      if (!itemCodeList_) return null;
-      const memberRank_ = String(r.memberRank || '').trim();
-      if (memberRank_) return null;
-      const issueCount_ = parseInt(toHankaku_(String(r.issueCount || '0')), 10) || 0;
-      if (issueCount_ > 0 && issueCount_ <= 1000) return null;
-      const sd = parseDateFront_(String(r.couponStartDate || ''));
-      const edStr = String(r.couponEndDate || '').trim();
-      const ed = edStr ? parseDateFront_(edStr) : sd;
-      if (!isNaN(sd.getTime()) && !isNaN(ed.getTime())) {
-        const diffDays = (ed - sd) / (1000 * 60 * 60 * 24);
-        if (diffDays <= 14) return null;
-      }
-      return '対象商品指定時は14日以内/1000枚以下/会員ランク指定のいずれかが必要です';
-    }
-
-    function renderPreview_() {
-      const el = document.getElementById('csvPreview');
-      if (!_csvRows.length) {
-        el.innerHTML = '<p style="color:#999;font-size:12px;">行が0件です。「＋ 行を追加」から追加してください。</p>';
-        document.getElementById('csvIssueBtn').disabled = true;
-        const countEl = document.getElementById('csvPreviewCount');
-        if (countEl) countEl.textContent = '発行可能: 0 / NG: 0';
-        const addBtnE = document.getElementById('addRowBtn');
-        if (addBtnE) { addBtnE.disabled = false; addBtnE.textContent = '＋ 行を追加（残り5件）'; addBtnE.style.background = '#27ae60'; }
-        return;
-      }
-      let ok = 0;
-      let html = '<div style="overflow-x:auto"><table border="1" cellpadding="3" style="font-size:11px;border-collapse:collapse;white-space:nowrap">'
-        + '<tr style="background:#f0f0f0"><th>#</th><th>種別</th><th>値引き額/率</th>'
-        + '<th>開始日</th><th>終了日</th><th>開始時刻</th><th>終了時刻</th>'
-        + '<th>クーポン名</th><th>説明文</th><th>公開設定</th><th>画像URL</th>'
-        + '<th>商品コード</th><th>利用条件</th>'
-        + '<th>会員ランク</th><th>購入履歴</th><th>購入期間</th><th>回数下限</th><th>回数上限</th>'
-        + '<th>性別</th><th>年齢下限</th><th>年齢上限</th><th>誕生月</th><th>居住地</th>'
-        + '<th>判定</th><th>削除</th></tr>';
-      _csvRows.forEach((r, i) => {
-        const err     = validateCsvRowFront_(r);
-        const warn    = !err ? warnCsvRowFront_(r) : null;
-        const valid   = !err;
-        if (valid) ok++;
-        const typeNum = resolveTypeNum_(r.discountType || '定額');
-        const isFree  = typeNum === 4;
-
-        const typeSel =
-          `<select id="dt_${i}" style="width:70px" onchange="_csvRows[${i}].discountType=this.value;onTypeChange_(${i})">`
-          + ['定額','定率','送料無料'].map(t =>
-              `<option value="${t}"${(r.discountType||'定額')===t?' selected':''}>` + t + '</option>'
-            ).join('')
-          + '</select>';
-
-        const dfUnit = isFree ? '' : typeNum === 2 ? '%' : '円';
-        const dfCell =
-          `<input id="df_${i}" type="text" style="width:50px${isFree?';display:none':''}" maxlength="10"`
-          + ` value="${escAttr_(r.discountFactor||'')}" ${isFree?'disabled':''}`
-          + ` oninput="_csvRows[${i}].discountFactor=this.value;revalidateRow_(${i})">`
-          + `<span id="dfunit_${i}">${dfUnit}</span>`;
-
-        const sdCell =
-          `<input type="text" placeholder="2026/7/1" style="width:76px"`
-          + ` value="${escAttr_(r.couponStartDate||'')}"`
-          + ` oninput="_csvRows[${i}].couponStartDate=this.value;revalidateRow_(${i})">`;
-
-        const edCell =
-          `<input type="text" placeholder="省略=同日" style="width:76px"`
-          + ` value="${escAttr_(r.couponEndDate||'')}"`
-          + ` oninput="_csvRows[${i}].couponEndDate=this.value;revalidateRow_(${i})">`;
-
-        const shSel = makeHourSelect_(r.startHour||'0',     `_csvRows[${i}].startHour=this.value;revalidateRow_(${i})`);
-        const smSel = makeMinuteSelect_(r.startMinute||'0', `_csvRows[${i}].startMinute=this.value;revalidateRow_(${i})`);
-        const ehSel = makeHourSelect_(r.endHour||'23',      `_csvRows[${i}].endHour=this.value;revalidateRow_(${i})`);
-        const emSel = makeMinuteSelect_(r.endMinute||'59',  `_csvRows[${i}].endMinute=this.value;revalidateRow_(${i})`);
-
-        const cnCell =
-          `<input type="text" placeholder="省略=自動生成" style="width:108px" maxlength="30"`
-          + ` value="${escAttr_(r.couponName||'')}"`
-          + ` oninput="_csvRows[${i}].couponName=this.value;revalidateRow_(${i})">`;
-
-        const capCell =
-          `<input type="text" placeholder="-" style="width:108px" maxlength="100"`
-          + ` value="${escAttr_(r.couponCaption||'')}"`
-          + ` oninput="_csvRows[${i}].couponCaption=this.value;revalidateRow_(${i})">`;
-
-        const dfSel =
-          `<select style="width:55px" onchange="_csvRows[${i}].displayFlag=this.value;revalidateRow_(${i})">`
-          + `<option value="1"${(r.displayFlag||'1')==='1'?' selected':''}>公開</option>`
-          + `<option value="0"${r.displayFlag==='0'?' selected':''}>限定</option>`
-          + '</select>';
-
-        const imgCell =
-          `<input type="text" placeholder="https://image.rakuten.co.jp/..." style="width:140px"`
-          + ` value="${escAttr_(r.couponImageUrl||'')}"`
-          + ` oninput="_csvRows[${i}].couponImageUrl=this.value;revalidateRow_(${i})">`;
-
-        const itemCell =
-          `<input type="text" placeholder="全品" style="width:72px"`
-          + ` value="${escAttr_(r.itemCodeList||'')}"`
-          + ` oninput="_csvRows[${i}].itemCodeList=this.value;revalidateRow_(${i})">`;
-
-        const ctcVal  = r.conditionTypeCode || '';
-        const svUnit  = ctcVal==='1' ? '円以上' : ctcVal==='2' ? '個以上' : '';
-        const ctcCell =
-          `<select id="ctc_${i}" style="width:78px" onchange="_csvRows[${i}].conditionTypeCode=this.value;onCondTypeChange_(${i})">`
-          + `<option value=""${ctcVal===''?' selected':''}>指定しない</option>`
-          + `<option value="1"${ctcVal==='1'?' selected':''}>金額条件</option>`
-          + `<option value="2"${ctcVal==='2'?' selected':''}>個数条件</option>`
-          + `</select>`
-          + `<input id="sv_${i}" type="text" placeholder="例:1000" style="width:52px${ctcVal===''?';display:none':''}"`
-          + ` value="${escAttr_(r.startValue||'')}"`
-          + ` oninput="_csvRows[${i}].startValue=this.value;revalidateRow_(${i})">`
-          + `<span id="svunit_${i}">${svUnit}</span>`;
-
-        // --- 獲得条件セル ---
-        const rankVal  = r.memberRank   || '';
-        const ptypeVal = r.purchaseType || '';
-        const hasRankUi      = rankVal !== '';
-        const isRepeaterUi   = ptypeVal === 'リピーター';
-        const repDisabledUi  = !isRepeaterUi || hasRankUi;
-
-        const rankSel = makeSimpleSelect_(`rank_${i}`,
-          [['','指定なし'],['レギュラー','レギュラー'],['シルバー','シルバー'],
-           ['ゴールド','ゴールド'],['プラチナ','プラチナ'],['ダイヤモンド','ダイヤモンド']],
-          rankVal, `_csvRows[${i}].memberRank=this.value;onRankChange_(${i})`, false);
-
-        const ptypeSel = makeSimpleSelect_(`ptype_${i}`,
-          [['','指定なし'],['新規','新規'],['リピーター','リピーター']],
-          ptypeVal, `_csvRows[${i}].purchaseType=this.value;onPurchaseTypeChange_(${i})`, hasRankUi);
-
-        const pperiodSel = makeSimpleSelect_(`pperiod_${i}`,
-          [['','-'],['1','1ヶ月'],['3','3ヶ月'],['6','6ヶ月'],['12','12ヶ月'],['24','24ヶ月']],
-          r.purchasePeriod||'', `_csvRows[${i}].purchasePeriod=this.value;revalidateRow_(${i})`, repDisabledUi);
-
-        const pcminOpts = [['','-']].concat([1,2,3,4,5,6,7,8,9,10].map(n=>[String(n),String(n)]));
-        const pcminSel  = makeSimpleSelect_(`pcmin_${i}`, pcminOpts,
-          r.purchaseCountMin||'', `_csvRows[${i}].purchaseCountMin=this.value;revalidateRow_(${i})`, repDisabledUi);
-
-        const pcmaxOpts = [['0','上限なし']].concat([1,2,3,4,5,6,7,8,9,10].map(n=>[String(n),String(n)]));
-        const pcmaxSel  = makeSimpleSelect_(`pcmax_${i}`, pcmaxOpts,
-          (r.purchaseCountMax!==undefined&&r.purchaseCountMax!=='')?r.purchaseCountMax:'0',
-          `_csvRows[${i}].purchaseCountMax=this.value;revalidateRow_(${i})`, repDisabledUi);
-
-        const genderSel = makeSimpleSelect_(`gender_${i}`,
-          [['','指定なし'],['男性','男性'],['女性','女性']],
-          r.gender||'', `_csvRows[${i}].gender=this.value;revalidateRow_(${i})`, hasRankUi);
-
-        const ageLo_ = `<input id="agelo_${i}" type="text" style="width:40px"${hasRankUi?' disabled':''}`
-          + ` value="${escAttr_(r.ageLower||'')}" placeholder="10-100"`
-          + ` oninput="_csvRows[${i}].ageLower=this.value;revalidateRow_(${i})">`;
-
-        const ageHi_ = `<input id="agehi_${i}" type="text" style="width:40px"${hasRankUi?' disabled':''}`
-          + ` value="${escAttr_(r.ageUpper||'')}" placeholder="10-100"`
-          + ` oninput="_csvRows[${i}].ageUpper=this.value;revalidateRow_(${i})">`;
-
-        const birthOpts = [['','指定なし']].concat([1,2,3,4,5,6,7,8,9,10,11,12].map(n=>[String(n),n+'月']));
-        const birthSel  = makeSimpleSelect_(`birth_${i}`, birthOpts,
-          r.birthMonth||'', `_csvRows[${i}].birthMonth=this.value;revalidateRow_(${i})`, hasRankUi);
-
-        const prefInput = `<input id="pref_${i}" type="text" style="width:80px"${hasRankUi?' disabled':''}`
-          + ` value="${escAttr_(r.prefectures||'')}" placeholder="例:東京,神奈川"`
-          + ` oninput="_csvRows[${i}].prefectures=this.value;revalidateRow_(${i})">`;
-
-        const judgColor = err ? 'red' : warn ? 'orange' : 'green';
-        const judgText  = err ? 'NG: ' + esc_(err) : warn ? '⚠ ' + esc_(warn) : 'OK';
-        const judgTitle = err || warn || '';
-
-        html +=
-          `<tr>`
-          + `<td style="text-align:center">${i+1}</td>`
-          + `<td>${typeSel}</td>`
-          + `<td>${dfCell}</td>`
-          + `<td>${sdCell}</td>`
-          + `<td>${edCell}</td>`
-          + `<td>${shSel}時${smSel}分</td>`
-          + `<td>${ehSel}時${emSel}分</td>`
-          + `<td>${cnCell}</td>`
-          + `<td>${capCell}</td>`
-          + `<td>${dfSel}</td>`
-          + `<td>${imgCell}</td>`
-          + `<td>${itemCell}</td>`
-          + `<td>${ctcCell}</td>`
-          + `<td>${rankSel}</td>`
-          + `<td>${ptypeSel}</td>`
-          + `<td>${pperiodSel}</td>`
-          + `<td>${pcminSel}</td>`
-          + `<td>${pcmaxSel}</td>`
-          + `<td>${genderSel}</td>`
-          + `<td>${ageLo_}</td>`
-          + `<td>${ageHi_}</td>`
-          + `<td>${birthSel}</td>`
-          + `<td>${prefInput}</td>`
-          + `<td id="judgement_${i}" style="color:${judgColor}" title="${escAttr_(judgTitle)}">${judgText}</td>`
-          + `<td style="text-align:center"><button onclick="removeRow_(${i})" style="padding:1px 5px;cursor:pointer">✕</button></td>`
-          + `</tr>`;
-      });
-      html += '</table></div>';
-      el.innerHTML = html;
-      const countEl = document.getElementById('csvPreviewCount');
-      if (countEl) countEl.textContent = `発行可能: ${ok} / NG: ${_csvRows.length - ok}`;
-      document.getElementById('csvIssueBtn').disabled = (ok === 0 || !_csvRows.length);
-      const addBtn = document.getElementById('addRowBtn');
-      if (addBtn) {
-        const atMax = _csvRows.length >= 5;
-        addBtn.disabled = atMax;
-        addBtn.textContent = atMax ? '上限5件に達しました' : `＋ 行を追加（残り${5 - _csvRows.length}件）`;
-        addBtn.style.background = atMax ? '#999' : '#27ae60';
-      }
-    }
-
-    function esc_(s) {
-      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    }
-
-    function escAttr_(s) {
-      return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    }
-
-    function makeSimpleSelect_(id, options, val, onchange, disabled) {
-      let html = `<select id="${id}"${disabled?' disabled style="color:#aaa"':''} onchange="${onchange}">`;
-      options.forEach(([v, label]) => {
-        html += `<option value="${escAttr_(v)}"${String(val)===String(v)?' selected':''}>${esc_(label)}</option>`;
-      });
-      return html + '</select>';
-    }
-
-    function onRankChange_(i) {
-      const hasRank = _csvRows[i].memberRank !== '';
-      // 他の獲得条件フィールドを有効/無効化
-      ['ptype_','gender_','birth_'].forEach(p => {
-        const el = document.getElementById(p + i);
-        if (!el) return;
-        el.disabled = hasRank;
-        el.style.color = hasRank ? '#aaa' : '';
-      });
-      ['agelo_','agehi_','pref_'].forEach(p => {
-        const el = document.getElementById(p + i);
-        if (el) el.disabled = hasRank;
-      });
-      // リピーターサブフィールドも無効化（ランク指定時）
-      ['pperiod_','pcmin_','pcmax_'].forEach(p => {
-        const el = document.getElementById(p + i);
-        if (!el) return;
-        el.disabled = true;
-        el.style.color = '#aaa';
-      });
-      if (hasRank) {
-        // 他の獲得条件値をクリア
-        const ptEl = document.getElementById('ptype_' + i);
-        if (ptEl) { ptEl.value = ''; _csvRows[i].purchaseType = ''; }
-        ['pperiod_','pcmin_','pcmax_'].forEach((p, k) => {
-          const key = ['purchasePeriod','purchaseCountMin','purchaseCountMax'][k];
-          const el = document.getElementById(p + i);
-          if (el) el.value = k === 2 ? '0' : '';
-          _csvRows[i][key] = k === 2 ? '0' : '';
-        });
-        ['gender_','birth_'].forEach((p, k) => {
-          const key = k === 0 ? 'gender' : 'birthMonth';
-          const el = document.getElementById(p + i);
-          if (el) el.value = '';
-          _csvRows[i][key] = '';
-        });
-        ['agelo_','agehi_'].forEach((p, k) => {
-          const key = k === 0 ? 'ageLower' : 'ageUpper';
-          const el = document.getElementById(p + i);
-          if (el) el.value = '';
-          _csvRows[i][key] = '';
-        });
-        const prefEl = document.getElementById('pref_' + i);
-        if (prefEl) prefEl.value = '';
-        _csvRows[i].prefectures = '';
-      } else {
-        // ランク解除時は購入履歴=リピーターかどうかでサブフィールドを制御
-        onPurchaseTypeChange_(i);
-      }
-      revalidateRow_(i);
-    }
-
-    function onPurchaseTypeChange_(i) {
-      const isRepeater = _csvRows[i].purchaseType === 'リピーター';
-      const hasRank    = _csvRows[i].memberRank !== '';
-      ['pperiod_','pcmin_','pcmax_'].forEach(p => {
-        const el = document.getElementById(p + i);
-        if (!el) return;
-        el.disabled = !isRepeater || hasRank;
-        el.style.color = (!isRepeater || hasRank) ? '#aaa' : '';
-      });
-      if (!isRepeater) {
-        ['pperiod_','pcmin_','pcmax_'].forEach((p, k) => {
-          const key = ['purchasePeriod','purchaseCountMin','purchaseCountMax'][k];
-          const el = document.getElementById(p + i);
-          if (el) el.value = k === 2 ? '0' : '';
-          _csvRows[i][key] = k === 2 ? '0' : '';
-        });
-      }
-      revalidateRow_(i);
-    }
-
-    function makeHourSelect_(val, onchange) {
-      let html = `<select style="width:46px" onchange="${onchange}">`;
-      for (let h = 0; h < 24; h++) {
-        html += `<option value="${h}"${String(val)===String(h)?' selected':''}>${h}</option>`;
-      }
-      return html + '</select>';
-    }
-
-    function makeMinuteSelect_(val, onchange) {
-      let html = `<select style="width:50px" onchange="${onchange}">`;
-      for (let m = 0; m < 60; m++) {
-        const mm = ('0'+m).slice(-2);
-        html += `<option value="${m}"${String(val)===String(m)?' selected':''}>${mm}</option>`;
-      }
-      return html + '</select>';
-    }
-
-    function addRow_() {
-      if (_csvRows.length >= 5) {
-        alert('一度に発行できるのは5件までです。');
-        return;
-      }
-      _csvRows.push({
-        discountType: '定額', discountFactor: '',
-        couponStartDate: '', couponEndDate: '',
-        startHour: '0', startMinute: '0', endHour: '23', endMinute: '59',
-        issueCount: '0', memberAvailMaxCount: '0', combineFlag: '0',
-        conditionTypeCode: '', startValue: '', itemCodeList: '',
-        couponName: '', couponCaption: '', displayFlag: '1', couponImageUrl: '',
-        memberRank: '', purchaseType: '', purchasePeriod: '',
-        purchaseCountMin: '', purchaseCountMax: '0',
-        gender: '', ageLower: '', ageUpper: '', birthMonth: '', prefectures: ''
-      });
-      renderPreview_();
-    }
-
-    function removeRow_(i) {
-      _csvRows.splice(i, 1);
-      renderPreview_();
-    }
-
-    function revalidateRow_(i) {
-      const err  = validateCsvRowFront_(_csvRows[i]);
-      const warn = !err ? warnCsvRowFront_(_csvRows[i]) : null;
-      const cell = document.getElementById('judgement_' + i);
-      if (cell) {
-        if (err) {
-          cell.style.color = 'red';
-          cell.textContent = 'NG: ' + err;
-          cell.title = err;
-        } else if (warn) {
-          cell.style.color = 'orange';
-          cell.textContent = '⚠ 警告';
-          cell.title = warn;
-        } else {
-          cell.style.color = 'green';
-          cell.textContent = 'OK';
-          cell.title = '';
-        }
-      }
-      const allOk = _csvRows.length > 0 && _csvRows.every(r => !validateCsvRowFront_(r));
-      document.getElementById('csvIssueBtn').disabled = !allOk;
-      const countEl = document.getElementById('csvPreviewCount');
-      if (countEl) {
-        const n = _csvRows.filter(r => !validateCsvRowFront_(r)).length;
-        countEl.textContent = `発行可能: ${n} / NG: ${_csvRows.length - n}`;
-      }
-    }
-
-    function onTypeChange_(i) {
-      const typeNum = resolveTypeNum_(_csvRows[i].discountType);
-      const isFree  = typeNum === 4;
-      const dfEl    = document.getElementById('df_' + i);
-      const unitEl  = document.getElementById('dfunit_' + i);
-      if (dfEl) {
-        dfEl.disabled      = isFree;
-        dfEl.style.display = isFree ? 'none' : '';
-        if (isFree) { dfEl.value = ''; _csvRows[i].discountFactor = ''; }
-      }
-      if (unitEl) unitEl.textContent = typeNum===2 ? '%' : isFree ? '' : '円';
-      revalidateRow_(i);
-    }
-
-    function onCondTypeChange_(i) {
-      const ctc    = _csvRows[i].conditionTypeCode;
-      const svEl   = document.getElementById('sv_' + i);
-      const unitEl = document.getElementById('svunit_' + i);
-      if (svEl) {
-        svEl.style.display = ctc !== '' ? '' : 'none';
-        if (ctc === '') { svEl.value = ''; _csvRows[i].startValue = ''; }
-      }
-      if (unitEl) unitEl.textContent = ctc==='1' ? '円以上' : ctc==='2' ? '個以上' : '';
-      revalidateRow_(i);
-    }
-
-    async function execCsvIssue() {
-      const validRows = _csvRows.filter(r => !validateCsvRowFront_(r));
-      if (!validRows.length) { alert('有効な行がありません'); return; }
-      if (!confirm(validRows.length + '件を楽天クーポンとして即時発行します。よろしいですか？')) return;
-
-      const btn = document.getElementById('csvIssueBtn');
-      btn.disabled = true; btn.textContent = '発行中...';
-      document.getElementById('csvResult').innerHTML = '<p>発行中... しばらくお待ちください</p>';
-
-      try {
-        const d = await callApi('issueFromSettingCsv', { rows: validRows });
-        renderCsvResult_(d);
-      } catch (err) {
-        document.getElementById('csvResult').innerHTML = `<p style="color:red">エラー: ${err.message}</p>`;
-      } finally {
-        btn.disabled = false; btn.textContent = '発行する';
-      }
-    }
-
-    function renderCsvResult_(d) {
-      const el = document.getElementById('csvResult');
-      let html = `<p><strong>発行完了: ${d.issued} / ${d.total} 件</strong></p>`
-        + '<table border="1" cellpadding="4" style="font-size:12px;border-collapse:collapse;width:100%">'
-        + '<tr><th>#</th><th>状態</th><th>クーポン名</th><th>開始</th><th>終了</th><th>獲得URL</th><th>メッセージ</th></tr>';
-      (d.results || []).forEach(r => {
-        const color = r.status === 'issued' ? 'green' : 'red';
-        const urlCell = r.pcGetUrl
-          ? `<td><a href="${esc_(r.pcGetUrl)}" target="_blank">開く</a>`
-            + `<button onclick="navigator.clipboard.writeText('${esc_(r.pcGetUrl)}').then(()=>this.textContent='✓').catch(()=>{})" `
-            + `style="margin-left:4px;font-size:11px">コピー</button></td>`
-          : '<td>-</td>';
-        html += `<tr><td>${r.row}</td><td style="color:${color}">${r.status}</td>`
-          + `<td>${esc_(r.couponName || '')}</td><td>${esc_(r.couponStart || '')}</td>`
-          + `<td>${esc_(r.couponEnd || '')}</td>${urlCell}<td>${esc_(r.message || '')}</td></tr>`;
-      });
-      el.innerHTML = html + '</table>';
-    }
-
-    // 初期行を1件表示
-    document.addEventListener('DOMContentLoaded', function() {
-      _csvRows.push({ discountType:'定額', discountFactor:'',
-        couponStartDate:'', couponEndDate:'', startHour:'0', startMinute:'0',
-        endHour:'23', endMinute:'59', issueCount:'0', memberAvailMaxCount:'0',
-        combineFlag:'0', conditionTypeCode:'', startValue:'',
-        itemCodeList:'', couponName:'', couponCaption:'',
-        displayFlag:'1', couponImageUrl:'' });
-      renderPreview_();
-    });
-  </script>
-
+</div>
+
+<div id="judge_${i}" class="judge ${jcls}">${jtxt}</div>
+</div>`;
+}
+
+// ===== カード一覧描画 =====
+function renderCards_(){
+  const el=document.getElementById('cardContainer');
+  if(!_csvRows.length){
+    el.innerHTML='<p style="color:#999;font-size:13px;text-align:center;padding:24px 0;">カードが0件です。「＋ 行を追加」から追加してください。</p>';
+  }else{
+    el.innerHTML=_csvRows.map((r,i)=>buildCard_(r,i)).join('');
+  }
+  updateGlobalState_();
+}
+
+// ===== 状態更新ヘルパー =====
+function updateCardBanner_(i){
+  if(!_csvRows[i])return;
+  const r=_csvRows[i];
+  const err=validateCsvRowFront_(r);
+  const warn=!err?warnCsvRowFront_(r):null;
+  const hasRank=String(r.memberRank||'').trim()!=='';
+  const el=document.getElementById('judge_'+i);
+  if(!el)return;
+  let cls,txt;
+  if(hasRank&&!err){cls='j-rank';txt='✅ 会員ランク指定中（他条件はロック）— 設定OK';}
+  else if(err){cls='j-ng';txt='❌ NG: '+esc_(err);}
+  else if(warn){cls='j-warn';txt='⚠ 警告: '+esc_(warn);}
+  else{cls='j-ok';txt='✅ 設定OK（このまま発行できます）';}
+  el.className='judge '+cls;
+  el.textContent=txt;
+  updateGlobalState_();
+}
+function updateGlobalState_(){
+  const ok=_csvRows.filter(r=>!validateCsvRowFront_(r)).length;
+  const countEl=document.getElementById('csvPreviewCount');
+  if(countEl)countEl.textContent=`発行可能: ${ok} / NG: ${_csvRows.length-ok}`;
+  const btn=document.getElementById('csvIssueBtn');
+  if(btn)btn.disabled=(_csvRows.length===0||ok===0||_csvRows.some(r=>validateCsvRowFront_(r)!==null));
+  const addBtn=document.getElementById('addRowBtn');
+  if(addBtn){
+    const atMax=_csvRows.length>=5;
+    addBtn.disabled=atMax;
+    addBtn.textContent=atMax?'上限5件に達しました':`＋ 行を追加（残り${5-_csvRows.length}件）`;
+  }
+}
+
+// ===== イベントハンドラ =====
+function onTypeChange_(i){
+  const typeNum=resolveTypeNum_(_csvRows[i].discountType);
+  const isFree=typeNum===4;
+  const dfField=document.getElementById('dfField_'+i);
+  const dfEl=document.getElementById('df_'+i);
+  if(dfField)dfField.style.display=isFree?'none':'';
+  if(dfEl&&isFree){dfEl.value='';_csvRows[i].discountFactor='';}
+  updateCardBanner_(i);
+}
+function onCondTypeChange_(i){
+  const ctc=_csvRows[i].conditionTypeCode;
+  const svField=document.getElementById('svField_'+i);
+  if(svField)svField.style.display=ctc===''?'none':'';
+  const svEl=document.getElementById('sv_'+i);
+  if(svEl&&ctc===''){svEl.value='';_csvRows[i].startValue='';}
+  updateCardBanner_(i);
+}
+function onRankChange_(i){
+  const checked=[];
+  document.querySelectorAll(`input.rankCb_${i}:checked`).forEach(el=>checked.push(el.value));
+  _csvRows[i].memberRank=checked.join(',');
+  const hasRank=checked.length>0;
+  if(hasRank){
+    // ロックグループの値をクリア
+    Object.assign(_csvRows[i],{purchaseType:'',purchasePeriod:'',purchaseCountMin:'',purchaseCountMax:'0',gender:'',ageLower:'',ageUpper:'',birthMonth:'',prefectures:''});
+  }
+  // 該当カードを再描画（ランク変更はロック/アンロックで構造が変わるため）
+  const old=document.getElementById('card_'+i);
+  if(old){const d=document.createElement('div');d.innerHTML=buildCard_(_csvRows[i],i);old.replaceWith(d.firstChild);}
+  updateGlobalState_();
+}
+function onPurchaseTypeChange_(i){
+  const isRep=_csvRows[i].purchaseType==='リピーター';
+  const hasRank=String(_csvRows[i].memberRank||'').trim()!=='';
+  const sub=document.getElementById('repSub_'+i);
+  if(sub){
+    sub.style.display=(isRep&&!hasRank)?'':'none';
+    sub.querySelectorAll('input,select').forEach(el=>{el.disabled=!isRep||hasRank;});
+  }
+  if(!isRep){_csvRows[i].purchasePeriod='';_csvRows[i].purchaseCountMin='';_csvRows[i].purchaseCountMax='0';}
+  updateCardBanner_(i);
+}
+function onPrefChange_(i){
+  const checked=[];
+  document.querySelectorAll(`input.pref_${i}:checked`).forEach(el=>checked.push(el.value));
+  _csvRows[i].prefectures=checked.join(',');
+  updateCardBanner_(i);
+}
+
+// ===== 行追加/削除 =====
+function addRow_(){
+  if(_csvRows.length>=5){alert('一度に発行できるのは5件までです。');return;}
+  _csvRows.push({
+    discountType:'定額',discountFactor:'',couponStartDate:'',couponEndDate:'',
+    startHour:'0',startMinute:'0',endHour:'23',endMinute:'59',
+    issueCount:'0',memberAvailMaxCount:'0',combineFlag:'0',
+    conditionTypeCode:'',startValue:'',itemCodeList:'',
+    couponName:'',couponCaption:'',displayFlag:'1',couponImageUrl:'',
+    memberRank:'',purchaseType:'',purchasePeriod:'',
+    purchaseCountMin:'',purchaseCountMax:'0',
+    gender:'',ageLower:'',ageUpper:'',birthMonth:'',prefectures:''
+  });
+  renderCards_();
+  // 新しいカードまでスクロール
+  const card=document.getElementById('card_'+(_csvRows.length-1));
+  if(card)card.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function removeRow_(i){
+  _csvRows.splice(i,1);
+  renderCards_();
+}
+
+// ===== 発行処理 =====
+async function execCsvIssue(){
+  const validRows=_csvRows.filter(r=>!validateCsvRowFront_(r));
+  if(!validRows.length){alert('有効な行がありません');return;}
+  if(!confirm(validRows.length+'件を楽天クーポンとして即時発行します。よろしいですか？'))return;
+  const btn=document.getElementById('csvIssueBtn');
+  btn.disabled=true;btn.textContent='発行中...';
+  document.getElementById('csvResult').innerHTML='<p style="color:#888">発行中... しばらくお待ちください</p>';
+  try{
+    const d=await callApi('issueFromSettingCsv',{rows:validRows});
+    renderCsvResult_(d);
+  }catch(err){
+    document.getElementById('csvResult').innerHTML=`<p style="color:red">エラー: ${esc_(err.message)}</p>`;
+  }finally{
+    btn.disabled=false;btn.textContent='発行する';
+    updateGlobalState_();
+  }
+}
+function renderCsvResult_(d){
+  const el=document.getElementById('csvResult');
+  let html=`<p style="font-weight:700;margin-top:16px">発行完了: ${d.issued} / ${d.total} 件</p>`
+    +'<table border="1" cellpadding="4" style="font-size:12px;border-collapse:collapse;width:100%">'
+    +'<tr><th>#</th><th>状態</th><th>クーポン名</th><th>開始</th><th>終了</th><th>獲得URL</th><th>メッセージ</th></tr>';
+  (d.results||[]).forEach(r=>{
+    const color=r.status==='issued'?'green':'red';
+    const urlCell=r.pcGetUrl
+      ?`<td><a href="${esc_(r.pcGetUrl)}" target="_blank">開く</a><button onclick="navigator.clipboard.writeText('${esc_(r.pcGetUrl)}').then(()=>this.textContent='✓').catch(()=>{})" style="margin-left:4px;font-size:11px">コピー</button></td>`
+      :'<td>-</td>';
+    html+=`<tr><td>${r.row}</td><td style="color:${color}">${r.status}</td>`
+      +`<td>${esc_(r.couponName||'')}</td><td>${esc_(r.couponStart||'')}</td>`
+      +`<td>${esc_(r.couponEnd||'')}</td>${urlCell}<td>${esc_(r.message||'')}</td></tr>`;
+  });
+  el.innerHTML=html+'</table>';
+}
+
+// ===== 初期表示 =====
+document.addEventListener('DOMContentLoaded',function(){
+  _csvRows.push({
+    discountType:'定額',discountFactor:'',couponStartDate:'',couponEndDate:'',
+    startHour:'0',startMinute:'0',endHour:'23',endMinute:'59',
+    issueCount:'0',memberAvailMaxCount:'0',combineFlag:'0',
+    conditionTypeCode:'',startValue:'',itemCodeList:'',
+    couponName:'',couponCaption:'',displayFlag:'1',couponImageUrl:'',
+    memberRank:'',purchaseType:'',purchasePeriod:'',
+    purchaseCountMin:'',purchaseCountMax:'0',
+    gender:'',ageLower:'',ageUpper:'',birthMonth:'',prefectures:''
+  });
+  renderCards_();
+});
+</script>
 </body>
 </html>
