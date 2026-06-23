@@ -62,9 +62,15 @@
     .rg input,.cg input{accent-color:#c9a227;width:13px;height:13px;}
 
     /* ── 居住地チェック ── */
+    .pref-all-row{margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #f0e8e0;}
+    .pref-all-label{font-size:12px;font-weight:700;cursor:pointer;color:#5a3e36;display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border:1px solid #d0c8c0;border-radius:16px;background:#fafafa;}
+    .pref-all-label:hover{background:#f9f0ea;}
+    .pref-all-label input{accent-color:#c9a227;width:13px;height:13px;}
     .pref-region{margin-bottom:8px;}
-    .pref-rgname{font-size:10px;font-weight:700;color:#9e7060;margin-bottom:3px;}
-    .pref-row{display:flex;flex-wrap:wrap;gap:4px;}
+    .pref-rg-header{margin-bottom:3px;}
+    .pref-area-label{font-size:11px;font-weight:700;cursor:pointer;color:#5a3e36;display:inline-flex;align-items:center;gap:4px;}
+    .pref-area-label input{accent-color:#7a9e87;width:12px;height:12px;}
+    .pref-row{display:flex;flex-wrap:wrap;gap:4px;padding-left:4px;}
     .pref-row label{font-size:11px;padding:3px 7px;border-radius:12px;}
 
     /* ── ロックグループ ── */
@@ -218,14 +224,16 @@ async function gateLogin_(){
 
 // ===== 地方別都道府県 =====
 const PREF_REGIONS=[
-  {name:'北海道',prefs:['北海道']},
-  {name:'東北',prefs:['青森','岩手','宮城','秋田','山形','福島']},
-  {name:'関東',prefs:['茨城','栃木','群馬','埼玉','千葉','東京','神奈川']},
-  {name:'中部',prefs:['新潟','富山','石川','福井','山梨','長野','岐阜','静岡','愛知']},
-  {name:'近畿',prefs:['三重','滋賀','京都','大阪','兵庫','奈良','和歌山']},
-  {name:'中国',prefs:['鳥取','島根','岡山','広島','山口']},
-  {name:'四国',prefs:['徳島','香川','愛媛','高知']},
-  {name:'九州・沖縄',prefs:['福岡','佐賀','長崎','熊本','大分','宮崎','鹿児島','沖縄']}
+  {name:'北海道',    prefs:['北海道']},
+  {name:'東北',      prefs:['青森','岩手','宮城','秋田','山形','福島']},
+  {name:'関東',      prefs:['茨城','栃木','群馬','埼玉','千葉','東京','神奈川']},
+  {name:'北陸・甲信越',prefs:['新潟','富山','石川','福井','山梨','長野']},
+  {name:'東海',      prefs:['岐阜','静岡','愛知','三重']},
+  {name:'近畿',      prefs:['滋賀','京都','大阪','兵庫','奈良','和歌山']},
+  {name:'中国',      prefs:['鳥取','島根','岡山','広島','山口']},
+  {name:'四国',      prefs:['徳島','香川','愛媛','高知']},
+  {name:'九州',      prefs:['福岡','佐賀','長崎','熊本','大分','宮崎','鹿児島']},
+  {name:'沖縄',      prefs:['沖縄']}
 ];
 
 // ===== 行データ =====
@@ -579,12 +587,27 @@ function buildCard_(r,i){
   const birthOpts=`<option value=""${!r.birthMonth?' selected':''}>指定しない</option>`
     +[1,2,3,4,5,6,7,8,9,10,11,12].map(v=>`<option value="${v}"${String(r.birthMonth||'')===String(v)?' selected':''}>${v}月</option>`).join('');
 
-  // 居住地チェックボックス
-  const prefCBs=PREF_REGIONS.map(rg=>
-    `<div class="pref-region"><div class="pref-rgname">${esc_(rg.name)}</div><div class="pref-row cg">${
-      rg.prefs.map(p=>`<label><input type="checkbox" class="pref_${i}" value="${p}"${selPrefs.includes(p)?' checked':''}${hasRank?' disabled':''} onchange="onPrefChange_(${i})">${p}</label>`).join('')
-    }</div></div>`
-  ).join('');
+  // 居住地チェックボックス（全選択＋エリアCB＋都道府県CB）
+  const allPrefCount=PREF_REGIONS.reduce((n,rg)=>n+rg.prefs.length,0);
+  const selPrefCount=PREF_REGIONS.reduce((n,rg)=>n+rg.prefs.filter(p=>selPrefs.includes(p)).length,0);
+  const allSel=selPrefCount===allPrefCount&&allPrefCount>0;
+  const someSel=selPrefCount>0&&!allSel;
+  const prefCBs=
+    `<div class="pref-all-row"><label class="pref-all-label">` +
+    `<input type="checkbox" id="prefAll_${i}"${allSel?' checked':''}${hasRank?' disabled':''} onchange="onPrefAllChange_(${i},this)">` +
+    `全選択／解除</label></div>` +
+    PREF_REGIONS.map(rg=>{
+      const cnt=rg.prefs.filter(p=>selPrefs.includes(p)).length;
+      const areaChecked=cnt===rg.prefs.length&&cnt>0;
+      return`<div class="pref-region">` +
+        `<div class="pref-rg-header"><label class="pref-area-label">` +
+        `<input type="checkbox" class="areaChk_${i}" data-area="${escAttr_(rg.name)}"` +
+        `${areaChecked?' checked':''}${hasRank?' disabled':''} onchange="onAreaChange_(${i},this)">` +
+        `${esc_(rg.name)}</label></div>` +
+        `<div class="pref-row cg">${
+          rg.prefs.map(p=>`<label><input type="checkbox" class="pref_${i}" value="${p}"${selPrefs.includes(p)?' checked':''}${hasRank?' disabled':''} onchange="onPrefChange_(${i})">${p}</label>`).join('')
+        }</div></div>`;
+    }).join('');
 
   return`<div class="coupon-card" id="card_${i}">
 <div class="card-header">
@@ -741,6 +764,8 @@ function renderCards_(){
       const card=document.getElementById('card_'+i);
       if(card)card.style.display=(i===_activeTab)?'':'none';
     });
+    // indeterminate 状態はHTML属性で設定できないのでJS側で設定
+    _csvRows.forEach((_,i)=>syncAreaChecks_(i));
   }
   renderTabs_();
   updateGlobalState_();
@@ -808,6 +833,7 @@ function onRankChange_(i){
     // タブ表示状態を維持
     if(i!==_activeTab)newCard.style.display='none';
     old.replaceWith(newCard);
+    syncAreaChecks_(i);
   }
   renderTabs_();
   updateGlobalState_();
@@ -829,10 +855,50 @@ function onPurchaseTypeChange_(i){
   updateCardBanner_(i);
 }
 function onPrefChange_(i){
+  syncPrefData_(i);
+  syncAreaChecks_(i);
+}
+function onAreaChange_(i,areaEl){
+  const rg=PREF_REGIONS.find(r=>r.name===areaEl.dataset.area);
+  if(!rg)return;
+  rg.prefs.forEach(p=>{
+    const cb=document.querySelector(`input.pref_${i}[value="${p}"]`);
+    if(cb)cb.checked=areaEl.checked;
+  });
+  areaEl.indeterminate=false;
+  syncPrefData_(i);
+  syncAreaChecks_(i);
+}
+function onPrefAllChange_(i,allEl){
+  allEl.indeterminate=false;
+  document.querySelectorAll(`input.pref_${i}`).forEach(cb=>{cb.checked=allEl.checked;});
+  document.querySelectorAll(`input.areaChk_${i}`).forEach(cb=>{cb.checked=allEl.checked;cb.indeterminate=false;});
+  syncPrefData_(i);
+}
+function syncPrefData_(i){
   const checked=[];
   document.querySelectorAll(`input.pref_${i}:checked`).forEach(el=>checked.push(el.value));
   _csvRows[i].prefectures=checked.join(',');
   updateCardBanner_(i);
+}
+function syncAreaChecks_(i){
+  let totalAll=0,checkedAll=0;
+  PREF_REGIONS.forEach(rg=>{
+    const areaCb=document.querySelector(`input.areaChk_${i}[data-area="${rg.name}"]`);
+    if(!areaCb)return;
+    const prefCbs=rg.prefs.map(p=>document.querySelector(`input.pref_${i}[value="${p}"]`)).filter(Boolean);
+    const cnt=prefCbs.filter(cb=>cb.checked).length;
+    totalAll+=prefCbs.length;checkedAll+=cnt;
+    if(cnt===0){areaCb.checked=false;areaCb.indeterminate=false;}
+    else if(cnt===prefCbs.length){areaCb.checked=true;areaCb.indeterminate=false;}
+    else{areaCb.checked=false;areaCb.indeterminate=true;}
+  });
+  const allCb=document.getElementById('prefAll_'+i);
+  if(allCb){
+    if(checkedAll===0){allCb.checked=false;allCb.indeterminate=false;}
+    else if(checkedAll===totalAll){allCb.checked=true;allCb.indeterminate=false;}
+    else{allCb.checked=false;allCb.indeterminate=true;}
+  }
 }
 
 // ===== 行追加/削除 =====
