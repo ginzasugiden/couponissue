@@ -135,8 +135,8 @@
       <tr><td>終了日</td><td>YYYY/M/D・省略すると開始日と同じ</td></tr>
       <tr><td>開始時 / 開始分</td><td>0〜23 / 0〜59・省略=0</td></tr>
       <tr><td>終了時 / 終了分</td><td>0〜23 / 0〜59・省略=23/59</td></tr>
-      <tr><td>発行枚数</td><td>整数・0=無制限</td></tr>
-      <tr><td>1人あたり上限</td><td>整数・0=無制限</td></tr>
+      <tr><td>クーポンの全利用回数上限</td><td>整数・0=無制限（先着◯回まで利用可能）</td></tr>
+      <tr><td>1人あたりの利用回数上限</td><td>整数・0=無制限</td></tr>
       <tr><td>併用可否</td><td>0=不可 / 1=可</td></tr>
       <tr><td>対象商品コード</td><td>商品管理番号をカンマ区切り・空欄=全品</td></tr>
       <tr><td>クーポン名</td><td>30文字以内・空欄=自動生成</td></tr>
@@ -600,11 +600,11 @@ function buildCard_(r,i){
     <div class="hint">https://image.rakuten.co.jp/ で始まるURLのみ・省略可</div>
   </div>
   <div class="two-col">
-    <div class="field"><span class="flabel">発行枚数</span>
+    <div class="field"><span class="flabel">クーポンの全利用回数上限</span>
       <input type="text" value="${escAttr_(r.issueCount||'0')}" oninput="_csvRows[${i}].issueCount=this.value;updateCardBanner_(${i})">
-      <div class="hint">0=無制限</div>
+      <div class="hint">0=無制限（先着◯回まで利用可能）</div>
     </div>
-    <div class="field"><span class="flabel">1人あたり上限</span>
+    <div class="field"><span class="flabel">1人あたりの利用回数上限</span>
       <input type="text" value="${escAttr_(r.memberAvailMaxCount||'0')}" oninput="_csvRows[${i}].memberAvailMaxCount=this.value;updateCardBanner_(${i})">
       <div class="hint">0=無制限</div>
     </div>
