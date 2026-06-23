@@ -17,8 +17,22 @@
     details.guide th,details.guide td{border:1px solid #e0d5cc;padding:5px 8px;text-align:left;vertical-align:top;}
     details.guide th{background:#f9f0ea;color:#5a3e36;}
 
+    /* ── タブバー ── */
+    .tab-bar{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:0;align-items:flex-end;}
+    .tab-btn{padding:8px 14px;border:1px solid #d0c8c0;border-bottom:none;border-radius:8px 8px 0 0;background:#f0ebe6;cursor:pointer;font-size:13px;color:#888;white-space:nowrap;line-height:1.3;}
+    .tab-btn.active{background:#fff;color:#5a3e36;font-weight:700;border-color:#e0d5cc;position:relative;top:1px;z-index:2;}
+    .tab-btn:not(.active):hover{background:#f9f0ea;}
+    .tab-add-btn{padding:7px 13px;border:1px dashed #7a9e87;border-radius:8px;background:#f0f7f3;cursor:pointer;font-size:12px;color:#5e836d;white-space:nowrap;align-self:center;}
+    .tab-add-btn:hover{background:#dceee4;}
+    .tab-add-btn:disabled{opacity:.45;cursor:not-allowed;}
+    .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:middle;}
+    .dot-ok{background:#4caf50;}
+    .dot-ng{background:#f44336;}
+    .dot-warn{background:#ff9800;}
+    .dot-empty{background:#ccc;}
+
     /* ── カード ── */
-    .coupon-card{background:#fff;border:1px solid #e0d5cc;border-radius:12px;margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,0.06);overflow:hidden;}
+    .coupon-card{background:#fff;border:1px solid #e0d5cc;border-radius:0 8px 8px 8px;margin-bottom:0;box-shadow:0 2px 8px rgba(0,0,0,0.06);overflow:hidden;}
     .card-header{background:linear-gradient(135deg,#f9f0ea 0%,#fdf6f0 100%);padding:12px 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e8ddd5;}
     .card-title{font-size:15px;font-weight:700;color:#5a3e36;}
     .card-del{background:#fff;border:1px solid #e0d5cc;border-radius:6px;padding:4px 10px;cursor:pointer;color:#888;font-size:12px;}
@@ -59,6 +73,9 @@
 
     /* ── リピーターサブ ── */
     .rep-sub{display:none;background:#f9f9f9;border:1px dashed #e0d5cc;border-radius:8px;padding:10px 12px;margin-top:8px;}
+    .rep-inline{display:flex;align-items:center;flex-wrap:wrap;gap:6px;font-size:13px;}
+    .rep-inline select{width:auto;padding:5px 8px;border:1px solid #d0c8c0;border-radius:6px;}
+    .rep-inline select:disabled{background:#f5f5f5;color:#ccc;}
 
     /* ── 判定バナー ── */
     .judge{margin:14px 18px;padding:10px 14px;border-radius:8px;font-size:13px;font-weight:600;}
@@ -68,16 +85,14 @@
     .j-rank{background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;}
 
     /* ── ボタン ── */
-    .btn-add{display:inline-block;padding:8px 18px;background:#7a9e87;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;margin-bottom:14px;}
-    .btn-add:hover{background:#5e836d;}
-    .btn-add:disabled{background:#bbb;cursor:not-allowed;}
     .btn-issue{padding:12px 36px;background:#c9a227;color:#fff;border:none;border-radius:8px;font-size:15px;cursor:pointer;font-weight:700;}
     .btn-issue:hover{background:#a88320;}
     .btn-issue:disabled{background:#ccc;cursor:not-allowed;}
     .count-bar{font-size:12px;color:#888;margin:4px 0 10px;}
 
     .wrap{max-width:720px;margin:0 auto;}
-    @media(max-width:500px){.two-col{grid-template-columns:1fr;}}
+    .tab-card-wrap{margin-bottom:20px;}
+    @media(max-width:500px){.two-col{grid-template-columns:1fr;}.rep-inline{flex-direction:column;align-items:flex-start;}}
   </style>
 </head>
 <body>
@@ -144,19 +159,21 @@
   </details>
 
   <p style="font-size:13px;color:#555;line-height:1.7;margin-bottom:10px;">
-    ※ 1回5件まで。CSVアップロード後に各カードで内容を確認・編集してから発行してください。<br>
+    ※ 1回5件まで。CSVアップロード後に各タブで内容を確認・編集してから発行してください。<br>
     ※ slot列不要（自動採番）。クーポン名省略時は「M/D SALE！クーポン」形式で自動生成。
   </p>
 
   <p style="margin-bottom:10px;"><a href="javascript:void(0)" onclick="dlCsvTemplate()" style="color:#c9a227;font-size:13px;">▼ テンプレートCSVをダウンロード</a></p>
 
-  <div style="margin:8px 0;">
+  <div style="margin:8px 0 14px;">
     <input type="file" accept=".csv" id="csvFileInput" onchange="onCsvFile(this)" style="font-size:13px;">
   </div>
 
-  <button id="addRowBtn" class="btn-add" onclick="addRow_()">＋ 行を追加（残り5件）</button>
-
-  <div id="cardContainer"></div>
+  <!-- タブバー＋カードコンテナ -->
+  <div class="tab-card-wrap">
+    <div id="tabBar" class="tab-bar"></div>
+    <div id="cardContainer"></div>
+  </div>
 
   <div class="count-bar"><span id="csvPreviewCount">発行可能: 0 / NG: 0</span></div>
   <div style="margin-bottom:16px;">
@@ -206,6 +223,7 @@ const PREF_REGIONS=[
 
 // ===== 行データ =====
 let _csvRows=[];
+let _activeTab=0;
 
 // ===== HEADER_MAP =====
 const HEADER_MAP={
@@ -254,7 +272,13 @@ function dlCsvTemplate(){
 function onCsvFile(input){
   const f=input.files&&input.files[0];if(!f)return;
   const reader=new FileReader();
-  reader.onload=e=>{_csvRows=parseCsv_(decodeBuf_(e.target.result));renderCards_();};
+  reader.onload=e=>{
+    const rows=parseCsv_(decodeBuf_(e.target.result));
+    if(!rows.length)return;
+    _csvRows=rows.slice(0,5);
+    _activeTab=0;
+    renderCards_();
+  };
   reader.readAsArrayBuffer(f);
 }
 function decodeBuf_(buf){
@@ -271,7 +295,6 @@ function parseCsv_(text){
   return lines.slice(1).map(line=>{
     const cols=splitLine_(line),obj={};
     headers.forEach((h,i)=>{obj[h]=(cols[i]||'').trim();});
-    // デフォルト補完
     if(obj.purchaseCountMax===undefined||obj.purchaseCountMax==='')obj.purchaseCountMax='0';
     return obj;
   });
@@ -323,10 +346,10 @@ function validateCsvRowFront_(r){
   const ed=ed_str?parseDateFront_(ed_str):sd;
   if(ed_str&&isNaN(ed.getTime()))return '終了日の形式が不正です（例: 2026/7/3）';
   if(ed<sd)return '終了日は開始日以降を指定してください';
-  const sh=parseInt(toHankaku_(r.startHour)||'0',10);
-  const sm=parseInt(toHankaku_(r.startMinute)||'0',10);
-  const eh=parseInt(toHankaku_(r.endHour)||'23',10);
-  const em=parseInt(toHankaku_(r.endMinute)||'59',10);
+  const sh=parseInt(toHankaku_(r.startHour||'0'),10);
+  const sm=parseInt(toHankaku_(r.startMinute||'0'),10);
+  const eh=parseInt(toHankaku_(r.endHour||'23'),10);
+  const em=parseInt(toHankaku_(r.endMinute||'59'),10);
   if(isNaN(sh)||sh<0||sh>23)return '開始時は0〜23の整数で入力してください';
   if(isNaN(sm)||sm<0||sm>59)return '開始分は0〜59の整数で入力してください';
   if(isNaN(eh)||eh<0||eh>23)return '終了時は0〜23の整数で入力してください';
@@ -400,6 +423,38 @@ function warnCsvRowFront_(r){
   return '対象商品指定時は14日以内/1000枚以下/会員ランク指定のいずれかが必要です';
 }
 
+// ===== タブ状態ドット =====
+function dotHtml_(r){
+  if(!r)return`<span class="dot dot-empty"></span>`;
+  const err=validateCsvRowFront_(r);
+  if(err)return`<span class="dot dot-ng"></span>`;
+  const warn=warnCsvRowFront_(r);
+  if(warn)return`<span class="dot dot-warn"></span>`;
+  return`<span class="dot dot-ok"></span>`;
+}
+
+// ===== タブバー描画 =====
+function renderTabs_(){
+  const bar=document.getElementById('tabBar');
+  if(!bar)return;
+  if(!_csvRows.length){bar.innerHTML='';return;}
+  const atMax=_csvRows.length>=5;
+  bar.innerHTML=_csvRows.map((r,i)=>
+    `<button class="tab-btn${i===_activeTab?' active':''}" onclick="switchTab_(${i})">${dotHtml_(r)}クーポン ${i+1}</button>`
+  ).join('')
+  +(atMax?'':`<button class="tab-add-btn" onclick="addRow_()">＋ 追加（残り${5-_csvRows.length}件）</button>`);
+}
+
+// ===== タブ切り替え =====
+function switchTab_(i){
+  _activeTab=i;
+  _csvRows.forEach((_,j)=>{
+    const card=document.getElementById('card_'+j);
+    if(card)card.style.display=(j===i)?'':'none';
+  });
+  renderTabs_();
+}
+
 // ===== HTML ユーティリティ =====
 function esc_(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function escAttr_(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
@@ -469,12 +524,15 @@ function buildCard_(r,i){
     `<label><input type="radio" name="ptype_${i}" value="${v}"${ptypeVal===v?' checked':''}${hasRank?' disabled':''} onchange="_csvRows[${i}].purchaseType=this.value;onPurchaseTypeChange_(${i})">${l}</label>`
   ).join('');
 
-  // リピーターサブフィールド
+  // リピーターサブフィールド（display:block で表示 ← CSS .rep-sub{display:none} を上書き）
   const pcmaxVal=r.purchaseCountMax!==undefined&&r.purchaseCountMax!==''?r.purchaseCountMax:'0';
-  const periodOpts=['1','3','6','12','24'].map(v=>`<option value="${v}"${r.purchasePeriod===v?' selected':''}>${v}ヶ月</option>`).join('');
-  const pcminOpts=[1,2,3,4,5,6,7,8,9,10].map(v=>`<option value="${v}"${String(r.purchaseCountMin)===String(v)?' selected':''}>${v}回</option>`).join('');
-  const pcmaxOpts=`<option value="0"${pcmaxVal==='0'?' selected':''}>上限なし</option>`+[1,2,3,4,5,6,7,8,9,10].map(v=>`<option value="${v}"${String(pcmaxVal)===String(v)?' selected':''}>${v}回</option>`).join('');
-  const repDisp=(isRep&&!hasRank)?'':'display:none';
+  const periodOpts=`<option value="">選択してください</option>`
+    +['1','3','6','12','24'].map(v=>`<option value="${v}"${r.purchasePeriod===v?' selected':''}>${v}ヶ月</option>`).join('');
+  const pcminOpts=`<option value="">選択してください</option>`
+    +[1,2,3,4,5,6,7,8,9,10].map(v=>`<option value="${v}"${String(r.purchaseCountMin)===String(v)?' selected':''}>${v}回</option>`).join('');
+  const pcmaxOpts=`<option value="0"${pcmaxVal==='0'?' selected':''}>上限なし</option>`
+    +[1,2,3,4,5,6,7,8,9,10].map(v=>`<option value="${v}"${String(pcmaxVal)===String(v)?' selected':''}>${v}回</option>`).join('');
+  const repDisp=(isRep&&!hasRank)?'display:block':'display:none';
 
   // 性別
   const genderR=[['','指定しない'],['男性','男性'],['女性','女性']].map(([v,l])=>
@@ -578,24 +636,25 @@ function buildCard_(r,i){
     <div class="field"><span class="flabel">購入履歴</span>
       <div class="rg">${ptypeR}</div>
       <div id="repSub_${i}" class="rep-sub" style="${repDisp}">
-        <div class="two-col">
-          <div class="field"><span class="flabel" style="font-weight:400;color:#777">購入履歴期間</span>
-            <select${hasRank?' disabled':''} onchange="_csvRows[${i}].purchasePeriod=this.value;updateCardBanner_(${i})">
-              <option value="">選択してください</option>${periodOpts}
-            </select>
-          </div>
-          <div class="field"><span class="flabel" style="font-weight:400;color:#777">購入回数 下限</span>
-            <select${hasRank?' disabled':''} onchange="_csvRows[${i}].purchaseCountMin=this.value;updateCardBanner_(${i})">
-              <option value="">選択してください</option>${pcminOpts}
-            </select>
-          </div>
+        <div class="rep-inline">
+          <span style="font-size:12px;color:#555;white-space:nowrap">過去</span>
+          <select id="repPeriod_${i}"${hasRank?' disabled':''} onchange="_csvRows[${i}].purchasePeriod=this.value;updateCardBanner_(${i})">
+            ${periodOpts}
+          </select>
+          <span style="font-size:12px;color:#555;white-space:nowrap">ヶ月以内に</span>
         </div>
-        <div class="field"><span class="flabel" style="font-weight:400;color:#777">購入回数 上限</span>
-          <select${hasRank?' disabled':''} onchange="_csvRows[${i}].purchaseCountMax=this.value;updateCardBanner_(${i})">
+        <div class="rep-inline" style="margin-top:8px">
+          <select id="repMin_${i}"${hasRank?' disabled':''} onchange="_csvRows[${i}].purchaseCountMin=this.value;updateCardBanner_(${i})">
+            ${pcminOpts}
+          </select>
+          <span style="font-size:12px;color:#555;white-space:nowrap">回以上</span>
+          <span style="font-size:12px;color:#aaa">〜</span>
+          <select id="repMax_${i}"${hasRank?' disabled':''} onchange="_csvRows[${i}].purchaseCountMax=this.value;updateCardBanner_(${i})">
             ${pcmaxOpts}
           </select>
-          <div class="hint">「上限なし」= 下限以上すべて対象</div>
+          <span style="font-size:12px;color:#555;white-space:nowrap">回以下</span>
         </div>
+        <div class="hint" style="margin-top:4px">回数上限「上限なし」= 下限以上すべてが対象</div>
       </div>
     </div>
     <div class="field"><span class="flabel">性別</span><div class="rg">${genderR}</div></div>
@@ -630,10 +689,16 @@ function buildCard_(r,i){
 function renderCards_(){
   const el=document.getElementById('cardContainer');
   if(!_csvRows.length){
-    el.innerHTML='<p style="color:#999;font-size:13px;text-align:center;padding:24px 0;">カードが0件です。「＋ 行を追加」から追加してください。</p>';
+    el.innerHTML='<p style="color:#999;font-size:13px;text-align:center;padding:24px 12px;border:1px solid #e0d5cc;border-radius:0 8px 8px 8px;background:#fff;">クーポンが0件です。「＋ 追加」から追加してください。</p>';
   }else{
     el.innerHTML=_csvRows.map((r,i)=>buildCard_(r,i)).join('');
+    // アクティブタブのカードのみ表示
+    _csvRows.forEach((_,i)=>{
+      const card=document.getElementById('card_'+i);
+      if(card)card.style.display=(i===_activeTab)?'':'none';
+    });
   }
+  renderTabs_();
   updateGlobalState_();
 }
 
@@ -653,6 +718,7 @@ function updateCardBanner_(i){
   else{cls='j-ok';txt='✅ 設定OK（このまま発行できます）';}
   el.className='judge '+cls;
   el.textContent=txt;
+  renderTabs_();
   updateGlobalState_();
 }
 function updateGlobalState_(){
@@ -661,12 +727,6 @@ function updateGlobalState_(){
   if(countEl)countEl.textContent=`発行可能: ${ok} / NG: ${_csvRows.length-ok}`;
   const btn=document.getElementById('csvIssueBtn');
   if(btn)btn.disabled=(_csvRows.length===0||ok===0||_csvRows.some(r=>validateCsvRowFront_(r)!==null));
-  const addBtn=document.getElementById('addRowBtn');
-  if(addBtn){
-    const atMax=_csvRows.length>=5;
-    addBtn.disabled=atMax;
-    addBtn.textContent=atMax?'上限5件に達しました':`＋ 行を追加（残り${5-_csvRows.length}件）`;
-  }
 }
 
 // ===== イベントハンドラ =====
@@ -675,14 +735,14 @@ function onTypeChange_(i){
   const isFree=typeNum===4;
   const dfField=document.getElementById('dfField_'+i);
   const dfEl=document.getElementById('df_'+i);
-  if(dfField)dfField.style.display=isFree?'none':'';
+  if(dfField)dfField.style.display=isFree?'none':'block';
   if(dfEl&&isFree){dfEl.value='';_csvRows[i].discountFactor='';}
   updateCardBanner_(i);
 }
 function onCondTypeChange_(i){
   const ctc=_csvRows[i].conditionTypeCode;
   const svField=document.getElementById('svField_'+i);
-  if(svField)svField.style.display=ctc===''?'none':'';
+  if(svField)svField.style.display=ctc===''?'none':'block';
   const svEl=document.getElementById('sv_'+i);
   if(svEl&&ctc===''){svEl.value='';_csvRows[i].startValue='';}
   updateCardBanner_(i);
@@ -693,12 +753,19 @@ function onRankChange_(i){
   _csvRows[i].memberRank=checked.join(',');
   const hasRank=checked.length>0;
   if(hasRank){
-    // ロックグループの値をクリア
     Object.assign(_csvRows[i],{purchaseType:'',purchasePeriod:'',purchaseCountMin:'',purchaseCountMax:'0',gender:'',ageLower:'',ageUpper:'',birthMonth:'',prefectures:''});
   }
-  // 該当カードを再描画（ランク変更はロック/アンロックで構造が変わるため）
+  // カードを再描画（ロック構造が変わるため）
   const old=document.getElementById('card_'+i);
-  if(old){const d=document.createElement('div');d.innerHTML=buildCard_(_csvRows[i],i);old.replaceWith(d.firstChild);}
+  if(old){
+    const d=document.createElement('div');
+    d.innerHTML=buildCard_(_csvRows[i],i);
+    const newCard=d.firstChild;
+    // タブ表示状態を維持
+    if(i!==_activeTab)newCard.style.display='none';
+    old.replaceWith(newCard);
+  }
+  renderTabs_();
   updateGlobalState_();
 }
 function onPurchaseTypeChange_(i){
@@ -706,10 +773,15 @@ function onPurchaseTypeChange_(i){
   const hasRank=String(_csvRows[i].memberRank||'').trim()!=='';
   const sub=document.getElementById('repSub_'+i);
   if(sub){
-    sub.style.display=(isRep&&!hasRank)?'':'none';
+    // .rep-sub { display:none } をインラインで上書きするため 'block' を明示
+    sub.style.display=(isRep&&!hasRank)?'block':'none';
     sub.querySelectorAll('input,select').forEach(el=>{el.disabled=!isRep||hasRank;});
   }
-  if(!isRep){_csvRows[i].purchasePeriod='';_csvRows[i].purchaseCountMin='';_csvRows[i].purchaseCountMax='0';}
+  if(!isRep){
+    _csvRows[i].purchasePeriod='';
+    _csvRows[i].purchaseCountMin='';
+    _csvRows[i].purchaseCountMax='0';
+  }
   updateCardBanner_(i);
 }
 function onPrefChange_(i){
@@ -732,13 +804,13 @@ function addRow_(){
     purchaseCountMin:'',purchaseCountMax:'0',
     gender:'',ageLower:'',ageUpper:'',birthMonth:'',prefectures:''
   });
+  _activeTab=_csvRows.length-1;
   renderCards_();
-  // 新しいカードまでスクロール
-  const card=document.getElementById('card_'+(_csvRows.length-1));
-  if(card)card.scrollIntoView({behavior:'smooth',block:'start'});
 }
 function removeRow_(i){
   _csvRows.splice(i,1);
+  if(_csvRows.length===0){_activeTab=0;}
+  else if(_activeTab>=_csvRows.length){_activeTab=_csvRows.length-1;}
   renderCards_();
 }
 
