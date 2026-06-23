@@ -71,6 +71,13 @@
     .lock-grp{transition:opacity .2s;}
     .lock-banner{display:none;background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:8px 12px;font-size:12px;color:#856404;margin-bottom:10px;}
 
+    /* ── 日付ピッカー ── */
+    .date-wrap{display:flex;align-items:center;gap:6px;}
+    .date-wrap input[type=text]{flex:1;min-width:0;}
+    .cal-btn{flex-shrink:0;padding:5px 8px;border:1px solid #d0c8c0;border-radius:6px;background:#fff;cursor:pointer;font-size:15px;line-height:1;color:#888;}
+    .cal-btn:hover{background:#f9f0ea;border-color:#c9a227;}
+    .date-hidden{position:absolute;width:0;height:0;opacity:0;pointer-events:none;border:none;}
+
     /* ── リピーターサブ ── */
     .rep-sub{display:none;background:#f9f9f9;border:1px dashed #e0d5cc;border-radius:8px;padding:10px 12px;margin-top:8px;}
     .rep-inline{display:flex;align-items:center;flex-wrap:wrap;gap:6px;font-size:13px;}
@@ -455,6 +462,35 @@ function switchTab_(i){
   renderTabs_();
 }
 
+// ===== 日付ピッカーヘルパー =====
+function dateTextToIso_(txt){
+  const p=String(txt||'').trim().split('/');
+  if(p.length!==3||!p[0]||!p[1]||!p[2])return'';
+  return p[0]+'-'+('0'+p[1]).slice(-2)+'-'+('0'+p[2]).slice(-2);
+}
+function isoToDateText_(iso){
+  const p=String(iso||'').split('-');
+  if(p.length!==3||!p[0]||!p[1]||!p[2])return'';
+  return p[0]+'/'+Number(p[1])+'/'+Number(p[2]);
+}
+function openDatePicker_(pickerId,textId){
+  const txt=document.getElementById(textId);
+  const picker=document.getElementById(pickerId);
+  if(!txt||!picker)return;
+  const iso=dateTextToIso_(txt.value);
+  if(iso)picker.value=iso;
+  try{picker.showPicker();}catch(e){picker.focus();picker.click();}
+}
+function onDatePick_(pickerId,textId,rowIdx,key){
+  const picker=document.getElementById(pickerId);
+  const txt=document.getElementById(textId);
+  if(!picker||!txt||!picker.value)return;
+  const val=isoToDateText_(picker.value);
+  txt.value=val;
+  _csvRows[rowIdx][key]=val;
+  updateCardBanner_(rowIdx);
+}
+
 // ===== HTML ユーティリティ =====
 function esc_(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function escAttr_(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
@@ -577,11 +613,19 @@ function buildCard_(r,i){
   <div class="sec-title">期間</div>
   <div class="two-col">
     <div class="field"><span class="flabel">開始日</span>
-      <input type="text" value="${escAttr_(r.couponStartDate||'')}" placeholder="2026/7/1" oninput="_csvRows[${i}].couponStartDate=this.value;updateCardBanner_(${i})">
+      <div class="date-wrap">
+        <input type="text" id="sdText_${i}" value="${escAttr_(r.couponStartDate||'')}" placeholder="2026/7/1" oninput="_csvRows[${i}].couponStartDate=this.value;updateCardBanner_(${i})">
+        <button type="button" class="cal-btn" onclick="openDatePicker_('sdPicker_${i}','sdText_${i}')">📅</button>
+        <input type="date" id="sdPicker_${i}" class="date-hidden" onchange="onDatePick_('sdPicker_${i}','sdText_${i}',${i},'couponStartDate')">
+      </div>
       <div class="hint">YYYY/M/D・本日以降</div>
     </div>
     <div class="field"><span class="flabel">終了日</span>
-      <input type="text" value="${escAttr_(r.couponEndDate||'')}" placeholder="省略=開始日と同日" oninput="_csvRows[${i}].couponEndDate=this.value;updateCardBanner_(${i})">
+      <div class="date-wrap">
+        <input type="text" id="edText_${i}" value="${escAttr_(r.couponEndDate||'')}" placeholder="省略=開始日と同日" oninput="_csvRows[${i}].couponEndDate=this.value;updateCardBanner_(${i})">
+        <button type="button" class="cal-btn" onclick="openDatePicker_('edPicker_${i}','edText_${i}')">📅</button>
+        <input type="date" id="edPicker_${i}" class="date-hidden" onchange="onDatePick_('edPicker_${i}','edText_${i}',${i},'couponEndDate')">
+      </div>
       <div class="hint">省略すると開始日と同じ</div>
     </div>
   </div>
