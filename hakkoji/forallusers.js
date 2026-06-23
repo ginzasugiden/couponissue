@@ -4,6 +4,22 @@ const API_KEY_SHEET_ID    = '1iYeV2SbOVoRH8Qjm2d1w5tWmhlE_zcc-yO1tDSLN7Rk';  // 
 //const REPORT_EMAIL        = 'tokyoflowercoltd+coupon@gmail.com';          // 管理者宛メール
 // ──────────────────────────
 
+// 獲得条件変換マップ
+const RANK_MAP = { 'レギュラー':1, 'シルバー':2, 'ゴールド':3, 'プラチナ':4, 'ダイヤモンド':5 };
+const GENDER_MAP = { '男性':'MALE', '女性':'FEMALE' };
+const PREF_MAP = {
+  '北海道':'HOKKAIDO','青森':'AOMORI','岩手':'IWATE','宮城':'MIYAGI','秋田':'AKITA',
+  '山形':'YAMAGATA','福島':'FUKUSHIMA','茨城':'IBARAKI','栃木':'TOCHIGI','群馬':'GUNMA',
+  '埼玉':'SAITAMA','千葉':'CHIBA','東京':'TOKYO','神奈川':'KANAGAWA','新潟':'NIIGATA',
+  '富山':'TOYAMA','石川':'ISHIKAWA','福井':'FUKUI','山梨':'YAMANASHI','長野':'NAGANO',
+  '岐阜':'GIFU','静岡':'SHIZUOKA','愛知':'AICHI','三重':'MIE','滋賀':'SHIGA',
+  '京都':'KYOTO','大阪':'OSAKA','兵庫':'HYOGO','奈良':'NARA','和歌山':'WAKAYAMA',
+  '鳥取':'TOTTORI','島根':'SHIMANE','岡山':'OKAYAMA','広島':'HIROSHIMA','山口':'YAMAGUCHI',
+  '徳島':'TOKUSHIMA','香川':'KAGAWA','愛媛':'EHIME','高知':'KOCHI','福岡':'FUKUOKA',
+  '佐賀':'SAGA','長崎':'NAGASAKI','熊本':'KUMAMOTO','大分':'OITA','宮崎':'MIYAZAKI',
+  '鹿児島':'KAGOSHIMA','沖縄':'OKINAWA'
+};
+
 function issueCouponsForAllUsersBatch() {
   const ss       = SpreadsheetApp.openById(MAIN_SPREADSHEET_ID);
   const shtUser  = ss.getSheetByName('user');
@@ -253,6 +269,66 @@ function performCouponIssueSettingRow(row, couponDay, couponEndDay, extra) {
       `</otherCondition></otherConditions>`;
   }
 
+  // --- 獲得条件（row[18..27] から取得; CSV発行時は csvIssueService.js が末尾追加） ---
+  const memberRankRaw     = String(row[18] || '').trim();
+  const purchaseTypeRaw   = String(row[19] || '').trim();
+  const purchasePeriodRaw = String(row[20] || '').trim();
+  const purchaseCountMinRaw = String(row[21] || '').trim();
+  const purchaseCountMaxRaw = String(row[22] || '').trim();
+  const genderRaw         = String(row[23] || '').trim();
+  const ageLowerRaw       = String(row[24] || '').trim();
+  const ageUpperRaw       = String(row[25] || '').trim();
+  const birthMonthRaw     = String(row[26] || '').trim();
+  const prefecturesRaw    = String(row[27] || '').trim();
+
+  // 会員ランク XML（カンマ区切り→複数 rankCond）
+  const rankCodes = memberRankRaw
+    ? memberRankRaw.split(',').map(s => RANK_MAP[s.trim()]).filter(c => c > 0)
+    : [];
+  const hasRank = rankCodes.length > 0;
+  const rankXml = hasRank
+    ? '<multiRankCond>' + rankCodes.map(c => `<rankCond>${c}</rankCond>`).join('') + '</multiRankCond>'
+    : '<multiRankCond><rankCond>0</rankCond></multiRankCond>';
+
+  // 購入履歴 XML（会員ランク指定時は type=0 強制）
+  const purchaseTypeMap = { '新規':1, 'リピーター':2 };
+  const purchaseTypeCode = hasRank ? 0 : (purchaseTypeMap[purchaseTypeRaw] || 0);
+  let purchaseHistoryXml = `<purchaseHistoryCond><type>${purchaseTypeCode}</type>`;
+  if (!hasRank && purchaseTypeCode === 2) {
+    const period = parseInt(purchasePeriodRaw, 10) || 1;
+    const pcMin  = parseInt(purchaseCountMinRaw, 10) || 1;
+    const pcMax  = parseInt(purchaseCountMaxRaw, 10) || 0;
+    purchaseHistoryXml += `<dynamicPeriod>${period}</dynamicPeriod>`;
+    purchaseHistoryXml += `<purchaseCount><minimum>${pcMin}</minimum><maximum>${pcMax}</maximum></purchaseCount>`;
+  }
+  purchaseHistoryXml += '</purchaseHistoryCond>';
+
+  // 性別 XML（会員ランク指定時は NONE 強制）
+  const genderCode = hasRank ? 'NONE' : (GENDER_MAP[genderRaw] || 'NONE');
+  const genderXml  = `<genderCond>${genderCode}</genderCond>`;
+
+  // 年齢 XML（会員ランク指定時は 0/0 強制）
+  const ageLo = hasRank ? 0 : (parseInt(ageLowerRaw,  10) || 0);
+  const ageHi = hasRank ? 0 : (parseInt(ageUpperRaw,  10) || 0);
+  const ageXml = `<ageRangeCond><lowerBound>${ageLo}</lowerBound><upperBound>${ageHi}</upperBound></ageRangeCond>`;
+
+  // 誕生月 XML（会員ランク指定時は 0 強制）
+  const birthMonthCode = hasRank ? 0 : (parseInt(birthMonthRaw, 10) || 0);
+  const birthXml = `<birthmonthCond>${birthMonthCode}</birthmonthCond>`;
+
+  // 居住地 XML（会員ランク指定時は NONE 強制）
+  let prefXml;
+  if (!hasRank && prefecturesRaw) {
+    const prefCodes = prefecturesRaw.split(',')
+      .map(p => PREF_MAP[p.trim().replace(/[都道府県]$/, '')])
+      .filter(c => c);
+    prefXml = prefCodes.length
+      ? '<multiPrefectureCond>' + prefCodes.map(c => `<prefectureCond>${c}</prefectureCond>`).join('') + '</multiPrefectureCond>'
+      : '<multiPrefectureCond><prefectureCond>NONE</prefectureCond></multiPrefectureCond>';
+  } else {
+    prefXml = '<multiPrefectureCond><prefectureCond>NONE</prefectureCond></multiPrefectureCond>';
+  }
+
   // --- API POST ---
   const xml =
     `<?xml version="1.0" encoding="UTF-8"?>` +
@@ -266,12 +342,12 @@ function performCouponIssueSettingRow(row, couponDay, couponEndDay, extra) {
       `<discountType>${discountType==='定率値引き'?2:1}</discountType>` +
       `<discountFactor>${discountNum}</discountFactor>` +
       `<memberAvailMaxCount>${memberAvail}</memberAvailMaxCount>` +
-      `<purchaseHistoryCond><type>0</type></purchaseHistoryCond>` +
-      `<multiRankCond><rankCond>0</rankCond></multiRankCond>` +
-      `<genderCond>NONE</genderCond>` +
-      `<ageRangeCond><lowerBound>0</lowerBound><upperBound>0</upperBound></ageRangeCond>` +
-      `<birthmonthCond>0</birthmonthCond>` +
-      `<multiPrefectureCond><prefectureCond>NONE</prefectureCond></multiPrefectureCond>` +
+      purchaseHistoryXml +
+      rankXml +
+      genderXml +
+      ageXml +
+      birthXml +
+      prefXml +
       `<combineFlag>${combineFlag}</combineFlag>` +
       `<displayFlag>${displayFlag}</displayFlag>` +
       (couponImageUrl ? `<couponImage>${couponImageUrl}</couponImage>` : '') +

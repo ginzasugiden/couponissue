@@ -142,13 +142,23 @@
       '公開設定（0=限定/1=公開）':             'displayFlag',
       'クーポン画像URL':                       'couponImageUrl',
       '利用条件種別（空=指定なし/1=金額/2=個数）': 'conditionTypeCode',
-      '利用条件値（金額:円/個数:個）':          'startValue'
+      '利用条件値（金額:円/個数:個）':          'startValue',
+      '会員ランク':                             'memberRank',
+      '購入履歴':                              'purchaseType',
+      '購入履歴期間（月）':                    'purchasePeriod',
+      '購入回数下限':                          'purchaseCountMin',
+      '購入回数上限':                          'purchaseCountMax',
+      '性別':                                  'gender',
+      '年齢下限':                              'ageLower',
+      '年齢上限':                              'ageUpper',
+      '誕生月':                                'birthMonth',
+      '居住地':                                'prefectures'
     };
 
     function dlCsvTemplate() {
       const bom  = '﻿';
-      const head = '種別（定額/定率/送料無料）,値引き額または率,開始日（YYYY/M/D）,終了日（YYYY/M/D省略=同日）,開始時（0-23）,開始分（0-59）,終了時（0-23）,終了分（0-59）,発行枚数（0=無制限）,1人あたり上限（0=無制限）,併用可否（0=不可/1=可）,対象商品コード,クーポン名（省略=自動生成）,クーポン説明文,公開設定（0=限定/1=公開）,クーポン画像URL,利用条件種別（空=指定なし/1=金額/2=個数）,利用条件値（金額:円/個数:個）\n';
-      const samp = '定額,15,2026/7/1,2026/7/1,0,0,23,59,0,0,0,,,,1,,,\n';
+      const head = '種別（定額/定率/送料無料）,値引き額または率,開始日（YYYY/M/D）,終了日（YYYY/M/D省略=同日）,開始時（0-23）,開始分（0-59）,終了時（0-23）,終了分（0-59）,発行枚数（0=無制限）,1人あたり上限（0=無制限）,併用可否（0=不可/1=可）,対象商品コード,クーポン名（省略=自動生成）,クーポン説明文,公開設定（0=限定/1=公開）,クーポン画像URL,利用条件種別（空=指定なし/1=金額/2=個数）,利用条件値（金額:円/個数:個）,会員ランク,購入履歴,購入履歴期間（月）,購入回数下限,購入回数上限,性別,年齢下限,年齢上限,誕生月,居住地\n';
+      const samp = '定額,15,2026/7/1,2026/7/1,0,0,23,59,0,0,0,,,,1,,,,,,,,,,,,\n';
       const blob = new Blob([bom + head + samp], { type: 'text/csv;charset=utf-8;' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob); a.download = 'hakkoji_csv_template.csv';
@@ -277,7 +287,88 @@
         if (isNaN(svNum) || svNum < 1 || svNum > 999999999) return '利用条件値は1〜999999999の整数で入力してください';
       }
 
+      // --- 獲得条件バリデーション ---
+      const memberRank_     = String(r.memberRank    || '').trim();
+      const purchaseType_   = String(r.purchaseType  || '').trim();
+      const purchasePeriod_ = String(r.purchasePeriod|| '').trim();
+      const pcMinStr_       = String(r.purchaseCountMin || '').trim();
+      const pcMaxStr_       = String(r.purchaseCountMax || '').trim();
+      const gender_         = String(r.gender         || '').trim();
+      const ageLowerStr_    = String(r.ageLower       || '').trim();
+      const ageUpperStr_    = String(r.ageUpper       || '').trim();
+      const birthMonthStr_  = String(r.birthMonth     || '').trim();
+      const prefectures_    = String(r.prefectures    || '').trim();
+
+      // 制約1: 会員ランク排他
+      if (memberRank_ !== '') {
+        const hasOther = purchaseType_ !== '' || gender_ !== '' ||
+          (ageLowerStr_ !== '' && ageLowerStr_ !== '0') ||
+          (ageUpperStr_ !== '' && ageUpperStr_ !== '0') ||
+          birthMonthStr_ !== '' || prefectures_ !== '';
+        if (hasOther) return '会員ランク指定時は他の獲得条件を指定できません';
+      }
+
+      // 制約2: リピーター時
+      if (purchaseType_ === 'リピーター') {
+        if (!['1','3','6','12','24'].includes(purchasePeriod_))
+          return 'リピーター指定時は購入履歴期間（1/3/6/12/24ヶ月）を選択してください';
+        const pcMin = parseInt(pcMinStr_, 10);
+        if (isNaN(pcMin) || pcMin < 1 || pcMin > 10)
+          return 'リピーター指定時は購入回数下限を1〜10で入力してください';
+        const pcMax = parseInt(pcMaxStr_, 10);
+        if (isNaN(pcMax) || pcMax < 0 || pcMax > 10)
+          return 'リピーター指定時は購入回数上限を 0（上限なし）または1〜10で入力してください';
+        if (pcMax !== 0 && pcMax < pcMin)
+          return '購入回数の上限は下限以上を指定してください';
+      }
+
+      // 制約3: 年齢
+      if (ageLowerStr_ !== '' || ageUpperStr_ !== '') {
+        const ageLo = ageLowerStr_ === '' ? 0 : parseInt(ageLowerStr_, 10);
+        const ageHi = ageUpperStr_ === '' ? 0 : parseInt(ageUpperStr_, 10);
+        if (isNaN(ageLo) || (ageLo !== 0 && (ageLo < 10 || ageLo > 100))) return '年齢は10〜100で指定してください';
+        if (isNaN(ageHi) || (ageHi !== 0 && (ageHi < 10 || ageHi > 100))) return '年齢は10〜100で指定してください';
+        if (ageLo > 0 && ageHi > 0 && ageLo > ageHi) return '年齢下限は上限以下を指定してください';
+      }
+
+      // 制約4: 誕生月
+      if (birthMonthStr_ !== '') {
+        const bm = parseInt(birthMonthStr_, 10);
+        if (isNaN(bm) || bm < 1 || bm > 12) return '誕生月は1〜12で指定してください';
+      }
+
+      // 制約5: 居住地
+      if (prefectures_ !== '') {
+        const PREF_NAMES = new Set(['北海道','青森','岩手','宮城','秋田','山形','福島','茨城','栃木','群馬',
+          '埼玉','千葉','東京','神奈川','新潟','富山','石川','福井','山梨','長野',
+          '岐阜','静岡','愛知','三重','滋賀','京都','大阪','兵庫','奈良','和歌山',
+          '鳥取','島根','岡山','広島','山口','徳島','香川','愛媛','高知','福岡',
+          '佐賀','長崎','熊本','大分','宮崎','鹿児島','沖縄']);
+        const unknown = prefectures_.split(',')
+          .map(p => p.trim().replace(/[都道府県]$/, ''))
+          .filter(p => p && !PREF_NAMES.has(p));
+        if (unknown.length > 0) return `居住地に不明な都道府県があります：${unknown.join('、')}`;
+      }
+
       return null;
+    }
+
+    // 制約6: 警告のみ（発行はブロックしない）
+    function warnCsvRowFront_(r) {
+      const itemCodeList_ = String(r.itemCodeList || '').trim();
+      if (!itemCodeList_) return null;
+      const memberRank_ = String(r.memberRank || '').trim();
+      if (memberRank_) return null;
+      const issueCount_ = parseInt(toHankaku_(String(r.issueCount || '0')), 10) || 0;
+      if (issueCount_ > 0 && issueCount_ <= 1000) return null;
+      const sd = parseDateFront_(String(r.couponStartDate || ''));
+      const edStr = String(r.couponEndDate || '').trim();
+      const ed = edStr ? parseDateFront_(edStr) : sd;
+      if (!isNaN(sd.getTime()) && !isNaN(ed.getTime())) {
+        const diffDays = (ed - sd) / (1000 * 60 * 60 * 24);
+        if (diffDays <= 14) return null;
+      }
+      return '対象商品指定時は14日以内/1000枚以下/会員ランク指定のいずれかが必要です';
     }
 
     function renderPreview_() {
@@ -296,9 +387,13 @@
         + '<tr style="background:#f0f0f0"><th>#</th><th>種別</th><th>値引き額/率</th>'
         + '<th>開始日</th><th>終了日</th><th>開始時刻</th><th>終了時刻</th>'
         + '<th>クーポン名</th><th>説明文</th><th>公開設定</th><th>画像URL</th>'
-        + '<th>商品コード</th><th>利用条件</th><th>判定</th><th>削除</th></tr>';
+        + '<th>商品コード</th><th>利用条件</th>'
+        + '<th>会員ランク</th><th>購入履歴</th><th>購入期間</th><th>回数下限</th><th>回数上限</th>'
+        + '<th>性別</th><th>年齢下限</th><th>年齢上限</th><th>誕生月</th><th>居住地</th>'
+        + '<th>判定</th><th>削除</th></tr>';
       _csvRows.forEach((r, i) => {
         const err     = validateCsvRowFront_(r);
+        const warn    = !err ? warnCsvRowFront_(r) : null;
         const valid   = !err;
         if (valid) ok++;
         const typeNum = resolveTypeNum_(r.discountType || '定額');
@@ -372,6 +467,59 @@
           + ` oninput="_csvRows[${i}].startValue=this.value;revalidateRow_(${i})">`
           + `<span id="svunit_${i}">${svUnit}</span>`;
 
+        // --- 獲得条件セル ---
+        const rankVal  = r.memberRank   || '';
+        const ptypeVal = r.purchaseType || '';
+        const hasRankUi      = rankVal !== '';
+        const isRepeaterUi   = ptypeVal === 'リピーター';
+        const repDisabledUi  = !isRepeaterUi || hasRankUi;
+
+        const rankSel = makeSimpleSelect_(`rank_${i}`,
+          [['','指定なし'],['レギュラー','レギュラー'],['シルバー','シルバー'],
+           ['ゴールド','ゴールド'],['プラチナ','プラチナ'],['ダイヤモンド','ダイヤモンド']],
+          rankVal, `_csvRows[${i}].memberRank=this.value;onRankChange_(${i})`, false);
+
+        const ptypeSel = makeSimpleSelect_(`ptype_${i}`,
+          [['','指定なし'],['新規','新規'],['リピーター','リピーター']],
+          ptypeVal, `_csvRows[${i}].purchaseType=this.value;onPurchaseTypeChange_(${i})`, hasRankUi);
+
+        const pperiodSel = makeSimpleSelect_(`pperiod_${i}`,
+          [['','-'],['1','1ヶ月'],['3','3ヶ月'],['6','6ヶ月'],['12','12ヶ月'],['24','24ヶ月']],
+          r.purchasePeriod||'', `_csvRows[${i}].purchasePeriod=this.value;revalidateRow_(${i})`, repDisabledUi);
+
+        const pcminOpts = [['','-']].concat([1,2,3,4,5,6,7,8,9,10].map(n=>[String(n),String(n)]));
+        const pcminSel  = makeSimpleSelect_(`pcmin_${i}`, pcminOpts,
+          r.purchaseCountMin||'', `_csvRows[${i}].purchaseCountMin=this.value;revalidateRow_(${i})`, repDisabledUi);
+
+        const pcmaxOpts = [['0','上限なし']].concat([1,2,3,4,5,6,7,8,9,10].map(n=>[String(n),String(n)]));
+        const pcmaxSel  = makeSimpleSelect_(`pcmax_${i}`, pcmaxOpts,
+          (r.purchaseCountMax!==undefined&&r.purchaseCountMax!=='')?r.purchaseCountMax:'0',
+          `_csvRows[${i}].purchaseCountMax=this.value;revalidateRow_(${i})`, repDisabledUi);
+
+        const genderSel = makeSimpleSelect_(`gender_${i}`,
+          [['','指定なし'],['男性','男性'],['女性','女性']],
+          r.gender||'', `_csvRows[${i}].gender=this.value;revalidateRow_(${i})`, hasRankUi);
+
+        const ageLo_ = `<input id="agelo_${i}" type="text" style="width:40px"${hasRankUi?' disabled':''}`
+          + ` value="${escAttr_(r.ageLower||'')}" placeholder="10-100"`
+          + ` oninput="_csvRows[${i}].ageLower=this.value;revalidateRow_(${i})">`;
+
+        const ageHi_ = `<input id="agehi_${i}" type="text" style="width:40px"${hasRankUi?' disabled':''}`
+          + ` value="${escAttr_(r.ageUpper||'')}" placeholder="10-100"`
+          + ` oninput="_csvRows[${i}].ageUpper=this.value;revalidateRow_(${i})">`;
+
+        const birthOpts = [['','指定なし']].concat([1,2,3,4,5,6,7,8,9,10,11,12].map(n=>[String(n),n+'月']));
+        const birthSel  = makeSimpleSelect_(`birth_${i}`, birthOpts,
+          r.birthMonth||'', `_csvRows[${i}].birthMonth=this.value;revalidateRow_(${i})`, hasRankUi);
+
+        const prefInput = `<input id="pref_${i}" type="text" style="width:80px"${hasRankUi?' disabled':''}`
+          + ` value="${escAttr_(r.prefectures||'')}" placeholder="例:東京,神奈川"`
+          + ` oninput="_csvRows[${i}].prefectures=this.value;revalidateRow_(${i})">`;
+
+        const judgColor = err ? 'red' : warn ? 'orange' : 'green';
+        const judgText  = err ? 'NG: ' + esc_(err) : warn ? '⚠ ' + esc_(warn) : 'OK';
+        const judgTitle = err || warn || '';
+
         html +=
           `<tr>`
           + `<td style="text-align:center">${i+1}</td>`
@@ -387,8 +535,17 @@
           + `<td>${imgCell}</td>`
           + `<td>${itemCell}</td>`
           + `<td>${ctcCell}</td>`
-          + `<td id="judgement_${i}" style="color:${valid?'green':'red'}" title="${escAttr_(err||'')}">`
-          + (valid ? 'OK' : 'NG: ' + esc_(err||'')) + '</td>'
+          + `<td>${rankSel}</td>`
+          + `<td>${ptypeSel}</td>`
+          + `<td>${pperiodSel}</td>`
+          + `<td>${pcminSel}</td>`
+          + `<td>${pcmaxSel}</td>`
+          + `<td>${genderSel}</td>`
+          + `<td>${ageLo_}</td>`
+          + `<td>${ageHi_}</td>`
+          + `<td>${birthSel}</td>`
+          + `<td>${prefInput}</td>`
+          + `<td id="judgement_${i}" style="color:${judgColor}" title="${escAttr_(judgTitle)}">${judgText}</td>`
           + `<td style="text-align:center"><button onclick="removeRow_(${i})" style="padding:1px 5px;cursor:pointer">✕</button></td>`
           + `</tr>`;
       });
@@ -412,6 +569,86 @@
 
     function escAttr_(s) {
       return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function makeSimpleSelect_(id, options, val, onchange, disabled) {
+      let html = `<select id="${id}"${disabled?' disabled style="color:#aaa"':''} onchange="${onchange}">`;
+      options.forEach(([v, label]) => {
+        html += `<option value="${escAttr_(v)}"${String(val)===String(v)?' selected':''}>${esc_(label)}</option>`;
+      });
+      return html + '</select>';
+    }
+
+    function onRankChange_(i) {
+      const hasRank = _csvRows[i].memberRank !== '';
+      // 他の獲得条件フィールドを有効/無効化
+      ['ptype_','gender_','birth_'].forEach(p => {
+        const el = document.getElementById(p + i);
+        if (!el) return;
+        el.disabled = hasRank;
+        el.style.color = hasRank ? '#aaa' : '';
+      });
+      ['agelo_','agehi_','pref_'].forEach(p => {
+        const el = document.getElementById(p + i);
+        if (el) el.disabled = hasRank;
+      });
+      // リピーターサブフィールドも無効化（ランク指定時）
+      ['pperiod_','pcmin_','pcmax_'].forEach(p => {
+        const el = document.getElementById(p + i);
+        if (!el) return;
+        el.disabled = true;
+        el.style.color = '#aaa';
+      });
+      if (hasRank) {
+        // 他の獲得条件値をクリア
+        const ptEl = document.getElementById('ptype_' + i);
+        if (ptEl) { ptEl.value = ''; _csvRows[i].purchaseType = ''; }
+        ['pperiod_','pcmin_','pcmax_'].forEach((p, k) => {
+          const key = ['purchasePeriod','purchaseCountMin','purchaseCountMax'][k];
+          const el = document.getElementById(p + i);
+          if (el) el.value = k === 2 ? '0' : '';
+          _csvRows[i][key] = k === 2 ? '0' : '';
+        });
+        ['gender_','birth_'].forEach((p, k) => {
+          const key = k === 0 ? 'gender' : 'birthMonth';
+          const el = document.getElementById(p + i);
+          if (el) el.value = '';
+          _csvRows[i][key] = '';
+        });
+        ['agelo_','agehi_'].forEach((p, k) => {
+          const key = k === 0 ? 'ageLower' : 'ageUpper';
+          const el = document.getElementById(p + i);
+          if (el) el.value = '';
+          _csvRows[i][key] = '';
+        });
+        const prefEl = document.getElementById('pref_' + i);
+        if (prefEl) prefEl.value = '';
+        _csvRows[i].prefectures = '';
+      } else {
+        // ランク解除時は購入履歴=リピーターかどうかでサブフィールドを制御
+        onPurchaseTypeChange_(i);
+      }
+      revalidateRow_(i);
+    }
+
+    function onPurchaseTypeChange_(i) {
+      const isRepeater = _csvRows[i].purchaseType === 'リピーター';
+      const hasRank    = _csvRows[i].memberRank !== '';
+      ['pperiod_','pcmin_','pcmax_'].forEach(p => {
+        const el = document.getElementById(p + i);
+        if (!el) return;
+        el.disabled = !isRepeater || hasRank;
+        el.style.color = (!isRepeater || hasRank) ? '#aaa' : '';
+      });
+      if (!isRepeater) {
+        ['pperiod_','pcmin_','pcmax_'].forEach((p, k) => {
+          const key = ['purchasePeriod','purchaseCountMin','purchaseCountMax'][k];
+          const el = document.getElementById(p + i);
+          if (el) el.value = k === 2 ? '0' : '';
+          _csvRows[i][key] = k === 2 ? '0' : '';
+        });
+      }
+      revalidateRow_(i);
     }
 
     function makeHourSelect_(val, onchange) {
@@ -442,7 +679,10 @@
         startHour: '0', startMinute: '0', endHour: '23', endMinute: '59',
         issueCount: '0', memberAvailMaxCount: '0', combineFlag: '0',
         conditionTypeCode: '', startValue: '', itemCodeList: '',
-        couponName: '', couponCaption: '', displayFlag: '1', couponImageUrl: ''
+        couponName: '', couponCaption: '', displayFlag: '1', couponImageUrl: '',
+        memberRank: '', purchaseType: '', purchasePeriod: '',
+        purchaseCountMin: '', purchaseCountMax: '0',
+        gender: '', ageLower: '', ageUpper: '', birthMonth: '', prefectures: ''
       });
       renderPreview_();
     }
@@ -454,11 +694,22 @@
 
     function revalidateRow_(i) {
       const err  = validateCsvRowFront_(_csvRows[i]);
+      const warn = !err ? warnCsvRowFront_(_csvRows[i]) : null;
       const cell = document.getElementById('judgement_' + i);
       if (cell) {
-        cell.style.color = err ? 'red' : 'green';
-        cell.textContent = err ? 'NG: ' + err : 'OK';
-        cell.title       = err || '';
+        if (err) {
+          cell.style.color = 'red';
+          cell.textContent = 'NG: ' + err;
+          cell.title = err;
+        } else if (warn) {
+          cell.style.color = 'orange';
+          cell.textContent = '⚠ 警告';
+          cell.title = warn;
+        } else {
+          cell.style.color = 'green';
+          cell.textContent = 'OK';
+          cell.title = '';
+        }
       }
       const allOk = _csvRows.length > 0 && _csvRows.every(r => !validateCsvRowFront_(r));
       document.getElementById('csvIssueBtn').disabled = !allOk;
