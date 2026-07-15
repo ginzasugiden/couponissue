@@ -191,6 +191,103 @@ function issueCouponsForAllUsersBatch() {
  * @param {Array} row        setting シートの１行
  * @param {Date}  couponDay  発行有効日の Date オブジェクト
  */
+/**
+ * setting行(row)のみから otherConditions／獲得条件系のXML断片を組み立てる純粋関数。
+ * API呼び出しを含まないため、ドライラン検証（debug.js の dryRunSalesMethod 等）から
+ * 副作用なしで呼び出せる。
+ * @param {Array} row  setting シートの１行
+ */
+function buildConditionXmlBlocks_(row) {
+  const condCode   = row[9];
+  const startValue = row[10];
+
+  // --- 販売方法条件（RS002） ---
+  let salesMethod = String(row[28] || '').trim();
+  if (salesMethod === '') salesMethod = '0';   // 未設定→通常購入のみ（新デフォルト）
+  const isSubscriptionOnly = salesMethod === '1';
+
+  // --- otherConditions XML（RS002 + RS003/RS004 を集約） ---
+  const otherBlocks = [];
+  if (salesMethod === '0' || salesMethod === '1') {
+    otherBlocks.push(
+      `<otherCondition><conditionTypeCode>RS002</conditionTypeCode><startValue>${salesMethod}</startValue></otherCondition>`
+    );
+  }
+  if (condCode && startValue) {
+    otherBlocks.push(
+      `<otherCondition><conditionTypeCode>${condCode}</conditionTypeCode><startValue>${startValue}</startValue></otherCondition>`
+    );
+  }
+  const otherXml = otherBlocks.length
+    ? `<otherConditions>${otherBlocks.join('')}</otherConditions>`
+    : '<otherConditions/>';
+
+  // --- 獲得条件（row[18..27] から取得; CSV発行時は csvIssueService.js が末尾追加） ---
+  const memberRankRaw     = String(row[18] || '').trim();
+  const purchaseTypeRaw   = String(row[19] || '').trim();
+  const purchasePeriodRaw = String(row[20] || '').trim();
+  const purchaseCountMinRaw = String(row[21] || '').trim();
+  const purchaseCountMaxRaw = String(row[22] || '').trim();
+  const genderRaw         = String(row[23] || '').trim();
+  const ageLowerRaw       = String(row[24] || '').trim();
+  const ageUpperRaw       = String(row[25] || '').trim();
+  const birthMonthRaw     = String(row[26] || '').trim();
+  const prefecturesRaw    = String(row[27] || '').trim();
+
+  // 会員ランク XML（カンマ区切り→複数 rankCond）
+  const rankCodes = memberRankRaw
+    ? memberRankRaw.split(',').map(s => RANK_MAP[s.trim()]).filter(c => c > 0)
+    : [];
+  const hasRank = rankCodes.length > 0;
+  const rankXml = hasRank
+    ? '<multiRankCond>' + rankCodes.map(c => `<rankCond>${c}</rankCond>`).join('') + '</multiRankCond>'
+    : '<multiRankCond><rankCond>0</rankCond></multiRankCond>';
+
+  // 購入履歴 XML（会員ランク指定時は type=0 強制）
+  const purchaseTypeMap = { '新規':1, 'リピーター':2 };
+  const purchaseTypeCode = hasRank ? 0 : (purchaseTypeMap[purchaseTypeRaw] || 0);
+  let purchaseHistoryXml = `<purchaseHistoryCond><type>${purchaseTypeCode}</type>`;
+  if (!hasRank && purchaseTypeCode === 2) {
+    const period = parseInt(purchasePeriodRaw, 10) || 1;
+    const pcMin  = parseInt(purchaseCountMinRaw, 10) || 1;
+    const pcMax  = parseInt(purchaseCountMaxRaw, 10) || 0;
+    purchaseHistoryXml += `<dynamicPeriod>${period}</dynamicPeriod>`;
+    purchaseHistoryXml += `<purchaseCount><minimum>${pcMin}</minimum><maximum>${pcMax}</maximum></purchaseCount>`;
+  }
+  purchaseHistoryXml += '</purchaseHistoryCond>';
+
+  // 性別・年齢・誕生月を「指定なし」に強制するケース（会員ランク指定時 or 定期購入のみ指定時）
+  const forceNoneGenderAgeBirth = hasRank || isSubscriptionOnly;
+
+  // 性別 XML
+  const genderCode = forceNoneGenderAgeBirth ? 'NONE' : (GENDER_MAP[genderRaw] || 'NONE');
+  const genderXml  = `<genderCond>${genderCode}</genderCond>`;
+
+  // 年齢 XML
+  const ageLo = forceNoneGenderAgeBirth ? 0 : (parseInt(ageLowerRaw,  10) || 0);
+  const ageHi = forceNoneGenderAgeBirth ? 0 : (parseInt(ageUpperRaw,  10) || 0);
+  const ageXml = `<ageRangeCond><lowerBound>${ageLo}</lowerBound><upperBound>${ageHi}</upperBound></ageRangeCond>`;
+
+  // 誕生月 XML
+  const birthMonthCode = forceNoneGenderAgeBirth ? 0 : (parseInt(birthMonthRaw, 10) || 0);
+  const birthXml = `<birthmonthCond>${birthMonthCode}</birthmonthCond>`;
+
+  // 居住地 XML（会員ランク指定時は NONE 強制）
+  let prefXml;
+  if (!hasRank && prefecturesRaw) {
+    const prefCodes = prefecturesRaw.split(',')
+      .map(p => PREF_MAP[p.trim().replace(/[都道府県]$/, '')])
+      .filter(c => c);
+    prefXml = prefCodes.length
+      ? '<multiPrefectureCond>' + prefCodes.map(c => `<prefectureCond>${c}</prefectureCond>`).join('') + '</multiPrefectureCond>'
+      : '<multiPrefectureCond><prefectureCond>NONE</prefectureCond></multiPrefectureCond>';
+  } else {
+    prefXml = '<multiPrefectureCond><prefectureCond>NONE</prefectureCond></multiPrefectureCond>';
+  }
+
+  return { otherXml, rankXml, purchaseHistoryXml, genderXml, ageXml, birthXml, prefXml, salesMethod, isSubscriptionOnly, hasRank };
+}
+
 function performCouponIssueSettingRow(row, couponDay, couponEndDay, extra) {
   extra = extra || {};
   const userId       = row[0];
@@ -201,8 +298,6 @@ function performCouponIssueSettingRow(row, couponDay, couponEndDay, extra) {
   const discountType = discountMap[String(row[5])] || '定額値引き';
   const memberAvail  = parseInt(row[7], 10) || 0;
   const combineFlag  = row[8];
-  const condCode     = row[9];
-  const startValue   = row[10];
   const sh = parseInt(row[11],10), sm = parseInt(row[12],10);
   const eh = parseInt(row[13],10), em = parseInt(row[14],10);
 
@@ -259,75 +354,15 @@ function performCouponIssueSettingRow(row, couponDay, couponEndDay, extra) {
     ? '<items>' + itemCodes.map(c=>`<item><itemUrl>${c}</itemUrl></item>`).join('') + '</items>'
     : '<items/>';
 
-  // --- otherConditions XML ---
-  let otherXml = '<otherConditions/>';
-  if (condCode && startValue) {
-    otherXml =
-      `<otherConditions><otherCondition>` +
-        `<conditionTypeCode>${condCode}</conditionTypeCode>` +
-        `<startValue>${startValue}</startValue>` +
-      `</otherCondition></otherConditions>`;
-  }
-
-  // --- 獲得条件（row[18..27] から取得; CSV発行時は csvIssueService.js が末尾追加） ---
-  const memberRankRaw     = String(row[18] || '').trim();
-  const purchaseTypeRaw   = String(row[19] || '').trim();
-  const purchasePeriodRaw = String(row[20] || '').trim();
-  const purchaseCountMinRaw = String(row[21] || '').trim();
-  const purchaseCountMaxRaw = String(row[22] || '').trim();
-  const genderRaw         = String(row[23] || '').trim();
-  const ageLowerRaw       = String(row[24] || '').trim();
-  const ageUpperRaw       = String(row[25] || '').trim();
-  const birthMonthRaw     = String(row[26] || '').trim();
-  const prefecturesRaw    = String(row[27] || '').trim();
-
-  // 会員ランク XML（カンマ区切り→複数 rankCond）
-  const rankCodes = memberRankRaw
-    ? memberRankRaw.split(',').map(s => RANK_MAP[s.trim()]).filter(c => c > 0)
-    : [];
-  const hasRank = rankCodes.length > 0;
-  const rankXml = hasRank
-    ? '<multiRankCond>' + rankCodes.map(c => `<rankCond>${c}</rankCond>`).join('') + '</multiRankCond>'
-    : '<multiRankCond><rankCond>0</rankCond></multiRankCond>';
-
-  // 購入履歴 XML（会員ランク指定時は type=0 強制）
-  const purchaseTypeMap = { '新規':1, 'リピーター':2 };
-  const purchaseTypeCode = hasRank ? 0 : (purchaseTypeMap[purchaseTypeRaw] || 0);
-  let purchaseHistoryXml = `<purchaseHistoryCond><type>${purchaseTypeCode}</type>`;
-  if (!hasRank && purchaseTypeCode === 2) {
-    const period = parseInt(purchasePeriodRaw, 10) || 1;
-    const pcMin  = parseInt(purchaseCountMinRaw, 10) || 1;
-    const pcMax  = parseInt(purchaseCountMaxRaw, 10) || 0;
-    purchaseHistoryXml += `<dynamicPeriod>${period}</dynamicPeriod>`;
-    purchaseHistoryXml += `<purchaseCount><minimum>${pcMin}</minimum><maximum>${pcMax}</maximum></purchaseCount>`;
-  }
-  purchaseHistoryXml += '</purchaseHistoryCond>';
-
-  // 性別 XML（会員ランク指定時は NONE 強制）
-  const genderCode = hasRank ? 'NONE' : (GENDER_MAP[genderRaw] || 'NONE');
-  const genderXml  = `<genderCond>${genderCode}</genderCond>`;
-
-  // 年齢 XML（会員ランク指定時は 0/0 強制）
-  const ageLo = hasRank ? 0 : (parseInt(ageLowerRaw,  10) || 0);
-  const ageHi = hasRank ? 0 : (parseInt(ageUpperRaw,  10) || 0);
-  const ageXml = `<ageRangeCond><lowerBound>${ageLo}</lowerBound><upperBound>${ageHi}</upperBound></ageRangeCond>`;
-
-  // 誕生月 XML（会員ランク指定時は 0 強制）
-  const birthMonthCode = hasRank ? 0 : (parseInt(birthMonthRaw, 10) || 0);
-  const birthXml = `<birthmonthCond>${birthMonthCode}</birthmonthCond>`;
-
-  // 居住地 XML（会員ランク指定時は NONE 強制）
-  let prefXml;
-  if (!hasRank && prefecturesRaw) {
-    const prefCodes = prefecturesRaw.split(',')
-      .map(p => PREF_MAP[p.trim().replace(/[都道府県]$/, '')])
-      .filter(c => c);
-    prefXml = prefCodes.length
-      ? '<multiPrefectureCond>' + prefCodes.map(c => `<prefectureCond>${c}</prefectureCond>`).join('') + '</multiPrefectureCond>'
-      : '<multiPrefectureCond><prefectureCond>NONE</prefectureCond></multiPrefectureCond>';
-  } else {
-    prefXml = '<multiPrefectureCond><prefectureCond>NONE</prefectureCond></multiPrefectureCond>';
-  }
+  // --- otherConditions／獲得条件 XML（row のみに依存する純粋処理） ---
+  const cond = buildConditionXmlBlocks_(row);
+  const otherXml           = cond.otherXml;
+  const rankXml            = cond.rankXml;
+  const purchaseHistoryXml = cond.purchaseHistoryXml;
+  const genderXml          = cond.genderXml;
+  const ageXml             = cond.ageXml;
+  const birthXml           = cond.birthXml;
+  const prefXml            = cond.prefXml;
 
   // --- API POST ---
   const xml =

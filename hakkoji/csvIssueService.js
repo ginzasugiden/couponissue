@@ -110,7 +110,7 @@ function issueFromSettingCsv(userId, password, rows) {
       }
       if (!settingRow) throw new Error('setting行の取得に失敗しました (userId=' + userId + ', slot=' + slot + ')');
 
-      // 獲得条件フィールドを row[18..27] に追加（performCouponIssueSettingRow が列インデックスで読む）
+      // 獲得条件＋販売方法条件フィールドを row[18..28] に追加（performCouponIssueSettingRow が列インデックスで読む）
       settingRow = settingRow.slice();
       settingRow[18] = r.memberRank       || '';
       settingRow[19] = r.purchaseType     || '';
@@ -122,6 +122,7 @@ function issueFromSettingCsv(userId, password, rows) {
       settingRow[25] = r.ageUpper         || '';
       settingRow[26] = r.birthMonth       || '';
       settingRow[27] = r.prefectures      || '';
+      settingRow[28] = r.salesMethod      || '';
 
       // 日付パース
       var couponDay    = parseDateGAS_(r.couponStartDate);

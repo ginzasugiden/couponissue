@@ -168,6 +168,7 @@
       <tr><td>年齢上限</td><td>10〜100・空欄=指定なし（両指定時: 下限≤上限）</td></tr>
       <tr><td>誕生月</td><td>1〜12・空欄=指定なし</td></tr>
       <tr><td>居住地</td><td>都道府県名カンマ区切り（例: 東京,神奈川）・空欄=全国</td></tr>
+      <tr><td>販売方法条件</td><td>0=通常購入のみ / 1=定期購入のみ / 99=指定しない・空欄=通常購入のみ（1指定時は性別/年齢/誕生月は指定不可）</td></tr>
     </table>
   </details>
 
@@ -269,14 +270,15 @@ const HEADER_MAP={
   '年齢下限':                     'ageLower',
   '年齢上限':                     'ageUpper',
   '誕生月':                       'birthMonth',
-  '居住地':                       'prefectures'
+  '居住地':                       'prefectures',
+  '販売方法条件（0=通常購入のみ/1=定期購入のみ/99=指定しない）':'salesMethod'
 };
 
 // ===== テンプレートDL =====
 function dlCsvTemplate(){
   const bom='﻿';
-  const head='種別（定額/定率/送料無料）,値引き額または率,開始日（YYYY/M/D）,終了日（YYYY/M/D省略=同日）,開始時（0-23）,開始分（0-59）,終了時（0-23）,終了分（0-59）,発行枚数（0=無制限）,1人あたり上限（0=無制限）,併用可否（0=不可/1=可）,対象商品コード,クーポン名（省略=自動生成）,クーポン説明文,公開設定（0=限定/1=公開）,クーポン画像URL,利用条件種別（空=指定なし/1=金額/2=個数）,利用条件値（金額:円/個数:個）,会員ランク,購入履歴,購入履歴期間（月）,購入回数下限,購入回数上限,性別,年齢下限,年齢上限,誕生月,居住地\n';
-  const samp='定額,15,2026/7/1,2026/7/1,0,0,23,59,0,0,0,,,,1,,,,,,,,,,,,\n';
+  const head='種別（定額/定率/送料無料）,値引き額または率,開始日（YYYY/M/D）,終了日（YYYY/M/D省略=同日）,開始時（0-23）,開始分（0-59）,終了時（0-23）,終了分（0-59）,発行枚数（0=無制限）,1人あたり上限（0=無制限）,併用可否（0=不可/1=可）,対象商品コード,クーポン名（省略=自動生成）,クーポン説明文,公開設定（0=限定/1=公開）,クーポン画像URL,利用条件種別（空=指定なし/1=金額/2=個数）,利用条件値（金額:円/個数:個）,会員ランク,購入履歴,購入履歴期間（月）,購入回数下限,購入回数上限,性別,年齢下限,年齢上限,誕生月,居住地,販売方法条件（0=通常購入のみ/1=定期購入のみ/99=指定しない）\n';
+  const samp='定額,15,2026/7/1,2026/7/1,0,0,23,59,0,0,0,,,,1,,,,,,,,,,,,,\n';
   const blob=new Blob([bom+head+samp],{type:'text/csv;charset=utf-8;'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);a.download='hakkoji_csv_template.csv';
@@ -311,6 +313,7 @@ function parseCsv_(text){
     const cols=splitLine_(line),obj={};
     headers.forEach((h,i)=>{obj[h]=(cols[i]||'').trim();});
     if(obj.purchaseCountMax===undefined||obj.purchaseCountMax==='')obj.purchaseCountMax='0';
+    if(obj.salesMethod===undefined||obj.salesMethod==='')obj.salesMethod='0';
     return obj;
   });
 }
@@ -402,6 +405,12 @@ function validateCsvRowFront_(r){
       (ageLowerStr_!==''&&ageLowerStr_!=='0')||(ageUpperStr_!==''&&ageUpperStr_!=='0')||
       birthMonthStr_!==''||prefectures_!=='';
     if(hasOther)return '会員ランク指定時は他の獲得条件を指定できません';
+  }
+  const salesMethod_=String(r.salesMethod||'0').trim()||'0';
+  if(!['0','1','99'].includes(salesMethod_))return '販売方法条件は 0（通常購入のみ）/1（定期購入のみ）/99（指定しない）のいずれかで入力してください';
+  if(salesMethod_==='1'){
+    const hasGAB=gender_!==''||(ageLowerStr_!==''&&ageLowerStr_!=='0')||(ageUpperStr_!==''&&ageUpperStr_!=='0')||birthMonthStr_!=='';
+    if(hasGAB)return '定期購入のみ選択時は性別・年齢・誕生月を指定できません';
   }
   if(purchaseType_==='リピーター'){
     if(!['1','3','6','12','24'].includes(purchasePeriod_))return 'リピーター指定時は購入履歴期間（1/3/6/12/24ヶ月）を選択してください';
@@ -522,6 +531,9 @@ function buildCard_(r,i){
   const rankVal=String(r.memberRank||'').trim();
   const hasRank=rankVal!=='';
   const selRanks=rankVal?rankVal.split(',').map(s=>s.trim()).filter(Boolean):[];
+  const smVal=String(r.salesMethod||'0').trim()||'0';
+  const isSubOnly=smVal==='1';
+  const lockGAB=hasRank||isSubOnly;
   const ptypeVal=String(r.purchaseType||'').trim();
   const isRep=ptypeVal==='リピーター';
   const selPrefs=(String(r.prefectures||'').trim()).split(',').map(s=>s.trim()).filter(Boolean);
@@ -556,6 +568,9 @@ function buildCard_(r,i){
   const ctcR=[['','指定しない'],['1','金額条件（円以上）'],['2','個数条件（個以上）']].map(([v,l])=>
     `<label><input type="radio" name="ctc_${i}" value="${v}"${ctcVal===v?' checked':''} onchange="_csvRows[${i}].conditionTypeCode=this.value;onCondTypeChange_(${i})">${l}</label>`
   ).join('');
+  const salesMethodR=[['0','通常購入のみ'],['1','定期購入のみ'],['99','指定しない（通常＆定期）']].map(([v,l])=>
+    `<label><input type="radio" name="sm_${i}" value="${v}"${smVal===v?' checked':''} onchange="_csvRows[${i}].salesMethod=this.value;onSalesMethodChange_(${i})">${l}</label>`
+  ).join('');
 
   // 会員ランクチェックボックス
   const RANKS=['レギュラー','シルバー','ゴールド','プラチナ','ダイヤモンド'];
@@ -580,7 +595,7 @@ function buildCard_(r,i){
 
   // 性別
   const genderR=[['','指定しない'],['男性','男性'],['女性','女性']].map(([v,l])=>
-    `<label><input type="radio" name="gend_${i}" value="${v}"${(r.gender||'')===v?' checked':''}${hasRank?' disabled':''} onchange="_csvRows[${i}].gender=this.value;updateCardBanner_(${i})">${l}</label>`
+    `<label><input type="radio" name="gend_${i}" value="${v}"${(r.gender||'')===v?' checked':''}${lockGAB?' disabled':''} onchange="_csvRows[${i}].gender=this.value;updateCardBanner_(${i})">${l}</label>`
   ).join('');
 
   // 誕生月
@@ -688,6 +703,9 @@ function buildCard_(r,i){
     <input type="text" value="${escAttr_(r.itemCodeList||'')}" placeholder="空欄=全品 / 商品管理番号をカンマ区切り" oninput="_csvRows[${i}].itemCodeList=this.value;updateCardBanner_(${i})">
     <div class="hint">商品管理番号をカンマ区切りで入力・空欄=全品対象</div>
   </div>
+  <div class="field"><span class="flabel">販売方法条件</span><div class="rg">${salesMethodR}</div>
+    <div class="hint">定期購入のみを選ぶと、性別・年齢・誕生月は指定できません（楽天の仕様）</div>
+  </div>
 </div>
 
 <div class="card-section">
@@ -724,22 +742,27 @@ function buildCard_(r,i){
         <div class="hint" style="margin-top:4px">回数上限「上限なし」= 下限以上すべてが対象</div>
       </div>
     </div>
+    <div class="lock-grp" id="lockGabGrp_${i}" style="${(isSubOnly&&!hasRank)?'opacity:0.45':''}">
+    <div class="lock-banner" id="lockGabBnr_${i}" style="${(isSubOnly&&!hasRank)?'':'display:none'}">
+      🔒 定期購入のみ選択中のため、性別・年齢・誕生月はロックされています
+    </div>
     <div class="field"><span class="flabel">性別</span><div class="rg">${genderR}</div></div>
     <div class="field"><span class="flabel">年齢</span>
       <div class="two-col">
         <div><span style="font-size:11px;color:#777">下限</span>
-          <input type="text" id="agelo_${i}" value="${escAttr_(r.ageLower||'')}" placeholder="10〜100"${hasRank?' disabled':''} oninput="_csvRows[${i}].ageLower=this.value;updateCardBanner_(${i})">
+          <input type="text" id="agelo_${i}" value="${escAttr_(r.ageLower||'')}" placeholder="10〜100"${lockGAB?' disabled':''} oninput="_csvRows[${i}].ageLower=this.value;updateCardBanner_(${i})">
         </div>
         <div><span style="font-size:11px;color:#777">上限</span>
-          <input type="text" id="agehi_${i}" value="${escAttr_(r.ageUpper||'')}" placeholder="10〜100"${hasRank?' disabled':''} oninput="_csvRows[${i}].ageUpper=this.value;updateCardBanner_(${i})">
+          <input type="text" id="agehi_${i}" value="${escAttr_(r.ageUpper||'')}" placeholder="10〜100"${lockGAB?' disabled':''} oninput="_csvRows[${i}].ageUpper=this.value;updateCardBanner_(${i})">
         </div>
       </div>
       <div class="hint">10〜100の整数・空欄=指定なし（両方指定する場合は下限≤上限）</div>
     </div>
     <div class="field"><span class="flabel">誕生月</span>
-      <select id="birth_${i}"${hasRank?' disabled':''} style="width:auto" onchange="_csvRows[${i}].birthMonth=this.value;updateCardBanner_(${i})">
+      <select id="birth_${i}"${lockGAB?' disabled':''} style="width:auto" onchange="_csvRows[${i}].birthMonth=this.value;updateCardBanner_(${i})">
         ${birthOpts}
       </select>
+    </div>
     </div>
     <div class="field"><span class="flabel">居住地（複数選択可）</span>
       ${prefCBs}
@@ -838,6 +861,24 @@ function onRankChange_(i){
   renderTabs_();
   updateGlobalState_();
 }
+function onSalesMethodChange_(i){
+  const isSub=String(_csvRows[i].salesMethod||'')==='1';
+  if(isSub){
+    Object.assign(_csvRows[i],{gender:'',ageLower:'',ageUpper:'',birthMonth:''});
+  }
+  // カードを再描画（ロック構造が変わるため）
+  const old=document.getElementById('card_'+i);
+  if(old){
+    const d=document.createElement('div');
+    d.innerHTML=buildCard_(_csvRows[i],i);
+    const newCard=d.firstChild;
+    if(i!==_activeTab)newCard.style.display='none';
+    old.replaceWith(newCard);
+    syncAreaChecks_(i);
+  }
+  renderTabs_();
+  updateGlobalState_();
+}
 function onPurchaseTypeChange_(i){
   const isRep=_csvRows[i].purchaseType==='リピーター';
   const hasRank=String(_csvRows[i].memberRank||'').trim()!=='';
@@ -912,7 +953,7 @@ function addRow_(){
     couponName:'',couponCaption:'',displayFlag:'1',couponImageUrl:'',
     memberRank:'',purchaseType:'',purchasePeriod:'',
     purchaseCountMin:'',purchaseCountMax:'0',
-    gender:'',ageLower:'',ageUpper:'',birthMonth:'',prefectures:''
+    gender:'',ageLower:'',ageUpper:'',birthMonth:'',prefectures:'',salesMethod:'0'
   });
   _activeTab=_csvRows.length-1;
   renderCards_();
@@ -969,7 +1010,7 @@ document.addEventListener('DOMContentLoaded',function(){
     couponName:'',couponCaption:'',displayFlag:'1',couponImageUrl:'',
     memberRank:'',purchaseType:'',purchasePeriod:'',
     purchaseCountMin:'',purchaseCountMax:'0',
-    gender:'',ageLower:'',ageUpper:'',birthMonth:'',prefectures:''
+    gender:'',ageLower:'',ageUpper:'',birthMonth:'',prefectures:'',salesMethod:'0'
   });
   renderCards_();
 });
